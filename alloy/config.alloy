@@ -159,6 +159,14 @@ loki.relabel "journal" {
     source_labels = ["__journal_priority_keyword"]
     target_label  = "level"
   }
+
+  // Whitelist: only these services reach Loki, everything else in the journal is dropped.
+  // Add a name here (anchored regex on service_name) to start capturing it.
+  rule {
+    source_labels = ["service_name"]
+    regex         = "immich.*|claude-code|cortex.*|searxng|tailscaled|sshd|firewalld|smartd|telemetry-.*"
+    action        = "keep"
+  }
 }
 
 loki.source.journal "local" {
@@ -168,6 +176,20 @@ loki.source.journal "local" {
     host_name              = sys.env("HOST_NAME"),
     deployment_environment = "homelab",
     source                 = "journal",
+  }
+  forward_to = [loki.process.journal.receiver]
+}
+
+// The stack's own containers: keep warn/error lines only. Loki's "negative structured metadata
+// bytes" error fires on every journald push (size=0, harmless) and would feed back into itself.
+loki.process "journal" {
+  stage.match {
+    selector = `{service_name=~"telemetry-.*"} !~ "level=(warn|error|fatal)"`
+    action   = "drop"
+  }
+  stage.match {
+    selector = `{service_name="telemetry-loki-1"} |= "negative structured metadata bytes"`
+    action   = "drop"
   }
   forward_to = [loki.write.local.receiver]
 }

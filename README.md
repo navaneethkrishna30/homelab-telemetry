@@ -7,9 +7,9 @@ other machines on the tailnet, and ships dashboards for **Claude Code** usage (c
 ```
 other machines ──OTLP/HTTPS──┐           ┌───────────────────────────────────────┐
 (Claude Code, Alloy agent)   │  tailscale│ Grafana Alloy (collector, 127.0.0.1)  │
-                             └──  serve ─►   ├─► Prometheus  metrics   (30d)     │
-this host: node_exporter, journald ───────►   ├─► Loki        logs      (30d)     │
-this host: Claude Code ───────────────────►   └─► Tempo       traces    (30d)     │
+                             └──  serve ─►   ├─► Prometheus  metrics   (45d)     │
+this host: node_exporter, journald ───────►   ├─► Loki        logs      (45d)     │
+this host: Claude Code ───────────────────►   └─► Tempo       traces    (45d)     │
                                           │ Grafana (tailnet-only)                │
                                           └───────────────────────────────────────┘
 ```
@@ -101,7 +101,7 @@ How they query:
 - The session dropdown comes from the `session_id` label on `claude_code_cost_usage_USD_total`.
 
 ## Not included yet
-Alert and recording rules, and long-term object storage (retention is 30 days everywhere).
+Alert and recording rules, and long-term object storage (retention is 45 days everywhere).
 
 ## Layout
 ```

@@ -12,7 +12,7 @@ distributor:
 
 compactor:
   compaction:
-    block_retention: 720h   # 30d
+    block_retention: 1080h   # 45d
 
 storage:
   trace:

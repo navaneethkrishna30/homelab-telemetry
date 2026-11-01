@@ -567,6 +567,42 @@ def immich():
                      color="red", prom_q=True), 3, 4)
     d.add(stat("Users", f"sum(immich_users_total{N})", color="blue", prom_q=True), 3, 4)
 
+    # --- backup (Seagate drive, from immich-backup-status.py via node_exporter's textfile collector)
+    def backup(title, expr, unit="short", on=None, off=None, desc=""):
+        # Missing until the status script has run once: n/a instead of a misleading 0.
+        p = stat(title, expr, unit=unit, color="blue", desc=desc, prom_q=True)
+        p["fieldConfig"]["defaults"]["noValue"] = "n/a"
+        if on:
+            p["fieldConfig"]["defaults"]["mappings"] = [{"type": "value", "options": {
+                "0": {"text": off[0], "color": off[1]}, "1": {"text": on[0], "color": on[1]}}}]
+        return p
+
+    d.row("Backup (Seagate)")
+    d.add(backup("Drive", "max(immich_backup_drive_connected)", on=("CONNECTED", "green"),
+                 off=("NOT SEEN", "red"), desc="The Seagate 1 TB is visible to the system."), 3, 4)
+    d.add(backup("Mounted", "max(immich_backup_drive_mounted)", on=("MOUNTED", "blue"),
+                 off=("UNMOUNTED", "text"), desc="The drive is mounted only while a backup uses it."), 3, 4)
+    d.add(backup("Nightly timer", "max(immich_backup_timer_enabled)", on=("ON", "green"), off=("OFF", "red"),
+                 desc="immich-backup.timer at 4 AM. OFF means no backup runs by itself."), 3, 4)
+    d.add(backup("Last run", "max(immich_backup_last_result)", on=("OK", "green"), off=("FAILED", "red"),
+                 desc="Result of the latest finished run."), 3, 4)
+    d.add(backup("Running", "max(immich_backup_running)", on=("RUNNING", "blue"), off=("IDLE", "text")), 3, 4)
+    d.add(backup("Last success", "time() - max(immich_backup_last_success_timestamp_seconds)", unit="dtdhms",
+                 desc="Time since the last successful run finished."), 3, 4)
+    d.add(backup("Last run took", "max(immich_backup_last_run_duration_seconds)", unit="dtdhms"), 3, 4)
+    d.add(backup("Snapshots", "max(immich_backup_snapshots)",
+                 desc="Snapshots on the drive; shown only while the drive is mounted."), 3, 4)
+    d.add(prom_table("Backup history", [
+        prom('immich_backup_run_duration_seconds', ref="A", instant=True),
+    ], [{"id": "organize", "options": {"excludeByName": {"Time": True, "__name__": True, "job": True,
+                                                         "instance": True, "host_name": True,
+                                                         "deployment_environment": True},
+                                       "renameByName": {"started": "Started", "result": "Result",
+                                                        "Value": "Duration"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "Started", "desc": True}]}}],
+        overrides=[ov("Duration", unit="s", decimals=0)],
+        desc="Every finished backup run in the log, newest first."), 24, 8)
+
     d.row("Logs")
     d.add(logs("Immich logs (server, ML, database, redis)", LOGS, max_lines=2000), 16, 10)
     d.add(timeseries("Warnings & errors by service", [

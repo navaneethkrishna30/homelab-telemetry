@@ -475,11 +475,625 @@
   {
    "type": "row",
    "id": 10,
-   "title": "Logs",
+   "title": "Backup (Seagate)",
    "collapsed": false,
    "gridPos": {
     "x": 0,
     "y": 5,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Drive",
+   "description": "The Seagate 1 TB is visible to the system.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_drive_connected)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "NOT SEEN",
+         "color": "red"
+        },
+        "1": {
+         "text": "CONNECTED",
+         "color": "green"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 11,
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Mounted",
+   "description": "The drive is mounted only while a backup uses it.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_drive_mounted)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "UNMOUNTED",
+         "color": "text"
+        },
+        "1": {
+         "text": "MOUNTED",
+         "color": "blue"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 12,
+   "gridPos": {
+    "x": 3,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Nightly timer",
+   "description": "immich-backup.timer at 4 AM. OFF means no backup runs by itself.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_timer_enabled)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "OFF",
+         "color": "red"
+        },
+        "1": {
+         "text": "ON",
+         "color": "green"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 13,
+   "gridPos": {
+    "x": 6,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Last run",
+   "description": "Result of the latest finished run.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_last_result)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "FAILED",
+         "color": "red"
+        },
+        "1": {
+         "text": "OK",
+         "color": "green"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 14,
+   "gridPos": {
+    "x": 9,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Running",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_running)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "IDLE",
+         "color": "text"
+        },
+        "1": {
+         "text": "RUNNING",
+         "color": "blue"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 15,
+   "gridPos": {
+    "x": 12,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Last success",
+   "description": "Time since the last successful run finished.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "time() - max(immich_backup_last_success_timestamp_seconds)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "dtdhms",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 16,
+   "gridPos": {
+    "x": 15,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Last run took",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_last_run_duration_seconds)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "dtdhms",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 17,
+   "gridPos": {
+    "x": 18,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Snapshots",
+   "description": "Snapshots on the drive; shown only while the drive is mounted.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_backup_snapshots)",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 18,
+   "gridPos": {
+    "x": 21,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "table",
+   "title": "Backup history",
+   "description": "Every finished backup run in the log, newest first.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "immich_backup_run_duration_seconds",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code",
+     "format": "table"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      },
+      "filterable": true
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Duration"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "__name__": true,
+       "job": true,
+       "instance": true,
+       "host_name": true,
+       "deployment_environment": true
+      },
+      "renameByName": {
+       "started": "Started",
+       "result": "Result",
+       "Value": "Duration"
+      }
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "fields": {},
+      "sort": [
+       {
+        "field": "Started",
+        "desc": true
+       }
+      ]
+     }
+    }
+   ],
+   "id": 19,
+   "gridPos": {
+    "x": 0,
+    "y": 10,
+    "w": 24,
+    "h": 8
+   }
+  },
+  {
+   "type": "row",
+   "id": 20,
+   "title": "Logs",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 18,
     "w": 24,
     "h": 1
    },
@@ -521,10 +1135,10 @@
     "showLabels": false,
     "showCommonLabels": false
    },
-   "id": 11,
+   "id": 21,
    "gridPos": {
     "x": 0,
-    "y": 6,
+    "y": 19,
     "w": 16,
     "h": 10
    }
@@ -584,22 +1198,22 @@
      "sort": "desc"
     }
    },
-   "id": 12,
+   "id": 22,
    "gridPos": {
     "x": 16,
-    "y": 6,
+    "y": 19,
     "w": 8,
     "h": 10
    }
   },
   {
    "type": "row",
-   "id": 13,
+   "id": 23,
    "title": "Library & storage",
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 16,
+    "y": 29,
     "w": 24,
     "h": 1
    },
@@ -673,10 +1287,10 @@
      "sort": "desc"
     }
    },
-   "id": 14,
+   "id": 24,
    "gridPos": {
     "x": 0,
-    "y": 17,
+    "y": 30,
     "w": 12,
     "h": 8
    }
@@ -749,10 +1363,10 @@
      "sort": "desc"
     }
    },
-   "id": 15,
+   "id": 25,
    "gridPos": {
     "x": 12,
-    "y": 17,
+    "y": 30,
     "w": 12,
     "h": 8
    }
@@ -841,10 +1455,10 @@
      }
     }
    ],
-   "id": 16,
+   "id": 26,
    "gridPos": {
     "x": 0,
-    "y": 25,
+    "y": 38,
     "w": 12,
     "h": 8
    }
@@ -905,22 +1519,22 @@
      "sort": "desc"
     }
    },
-   "id": 17,
+   "id": 27,
    "gridPos": {
     "x": 12,
-    "y": 25,
+    "y": 38,
     "w": 12,
     "h": 8
    }
   },
   {
    "type": "row",
-   "id": 18,
+   "id": 28,
    "title": "Jobs",
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 33,
+    "y": 46,
     "w": 24,
     "h": 1
    },
@@ -983,10 +1597,10 @@
      "sort": "desc"
     }
    },
-   "id": 19,
+   "id": 29,
    "gridPos": {
     "x": 0,
-    "y": 34,
+    "y": 47,
     "w": 12,
     "h": 9
    }
@@ -1063,22 +1677,22 @@
      }
     }
    ],
-   "id": 20,
+   "id": 30,
    "gridPos": {
     "x": 12,
-    "y": 34,
+    "y": 47,
     "w": 12,
     "h": 9
    }
   },
   {
    "type": "row",
-   "id": 21,
+   "id": 31,
    "title": "Server internals",
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 43,
+    "y": 56,
     "w": 24,
     "h": 1
    },
@@ -1141,10 +1755,10 @@
      "sort": "desc"
     }
    },
-   "id": 22,
+   "id": 32,
    "gridPos": {
     "x": 0,
-    "y": 44,
+    "y": 57,
     "w": 12,
     "h": 8
    }
@@ -1218,10 +1832,10 @@
      "sort": "desc"
     }
    },
-   "id": 23,
+   "id": 33,
    "gridPos": {
     "x": 12,
-    "y": 44,
+    "y": 57,
     "w": 12,
     "h": 8
    }
@@ -1314,10 +1928,10 @@
      }
     }
    ],
-   "id": 24,
+   "id": 34,
    "gridPos": {
     "x": 0,
-    "y": 52,
+    "y": 65,
     "w": 24,
     "h": 10
    }

@@ -140,6 +140,8 @@ services:
       - --path.rootfs=/host
       - --web.listen-address=172.30.0.1:9100
       - --collector.systemd
+      - --collector.textfile.directory=/var/lib/node-textfile
     volumes:
       - /:/host:ro,rslave
+      - ./data/textfile:/var/lib/node-textfile:ro,z   # immich-backup status, written by ~/claude/immich-backup
     security_opt: ["label=disable"]

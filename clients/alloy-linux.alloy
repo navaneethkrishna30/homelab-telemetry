@@ -1,0 +1,104 @@
+// Remote Linux host agent: node metrics + journald -> the hub over OTLP.
+// Replace <host>.<tailnet>.ts.net below with the tailnet name of the machine running this stack.
+// Set HOST_NAME via the alloy service environment, e.g. HOST_NAME=laptop.
+prometheus.exporter.unix "node" { }
+
+discovery.relabel "node" {
+  targets = prometheus.exporter.unix.node.targets
+  rule {
+    target_label = "job"
+    replacement  = "node"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOST_NAME")
+  }
+}
+
+prometheus.scrape "node" {
+  targets    = discovery.relabel.node.output
+  forward_to = [otelcol.receiver.prometheus.default.receiver]
+}
+
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    target_label = "service_name"
+    replacement  = "system"
+  }
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex         = "(.+)\\.service"
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__journal__systemd_user_unit"]
+    regex         = "(.+)\\.service"
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__journal_container_name"]
+    regex         = "(.+)"
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+loki.source.journal "local" {
+  max_age       = "12h"
+  relabel_rules = loki.relabel.journal.rules
+  forward_to    = [otelcol.receiver.loki.default.receiver]
+}
+
+otelcol.receiver.prometheus "default" {
+  output {
+    metrics = [otelcol.processor.transform.labels.input]
+  }
+}
+
+otelcol.receiver.loki "default" {
+  output {
+    logs = [otelcol.processor.transform.labels.input]
+  }
+}
+
+// Fleet labels. NOTE: verify on first connect that Loki shows service_name per
+// unit (service.name is copied from the log's service_name label).
+otelcol.processor.transform "labels" {
+  error_mode = "ignore"
+  metric_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["host.name"], sys.env("HOST_NAME"))`,
+      `set(attributes["deployment.environment"], "homelab")`,
+    ]
+  }
+  log_statements {
+    context    = "log"
+    statements = [
+      `set(resource.attributes["host.name"], sys.env("HOST_NAME"))`,
+      `set(resource.attributes["deployment.environment"], "homelab")`,
+      `set(resource.attributes["service.name"], attributes["service_name"]) where attributes["service_name"] != nil`,
+    ]
+  }
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.hub.input]
+    logs    = [otelcol.exporter.otlphttp.hub.input]
+  }
+}
+
+otelcol.exporter.otlphttp "hub" {
+  client {
+    endpoint = "https://<host>.<tailnet>.ts.net:4318"
+  }
+}

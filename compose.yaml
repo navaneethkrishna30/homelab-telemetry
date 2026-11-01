@@ -1,0 +1,129 @@
+name: telemetry
+
+# Everything binds to 127.0.0.1 only; tailscale serve (clients/tailscale-serve.sh)
+# is the sole way in from the tailnet. Docker-published ports bypass firewalld,
+# so never publish on 0.0.0.0.
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # One-shot: give each service's uid ownership of its bind-mounted data dir.
+  init:
+    image: busybox:1.37
+    user: "0:0"
+    volumes:
+      - ./data:/data:z
+    command: >
+      sh -c "mkdir -p /data/prometheus /data/loki /data/tempo /data/grafana /data/alloy &&
+             chown -R 65534:65534 /data/prometheus &&
+             chown -R 10001:10001 /data/loki /data/tempo &&
+             chown -R 472:472 /data/grafana"
+
+  alloy:
+    <<: *restart
+    image: grafana/alloy:v1.10.0
+    user: "0:0"                      # needs to read the systemd journal
+    environment:
+      HOST_NAME: ${HOST_NAME:-localhost}   # host_name label for this machine's metrics and journal
+    security_opt: ["label=disable"]  # SELinux: allow reading host journal
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - --stability.level=experimental   # needed for otelcol.processor.deltatocumulative
+      - /etc/alloy/config.alloy
+    ports:
+      - "127.0.0.1:4318:4318"   # OTLP/HTTP  <- tailscale serve :4318
+      - "127.0.0.1:12345:12345" # Alloy UI (debug)
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro,z
+      - ./data/alloy:/var/lib/alloy/data:z
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    depends_on:
+      init: {condition: service_completed_successfully}
+      prometheus: {condition: service_started}
+      loki: {condition: service_started}
+      tempo: {condition: service_started}
+
+  prometheus:
+    <<: *restart
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-remote-write-receiver
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,z
+      - ./data/prometheus:/prometheus:z
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  loki:
+    <<: *restart
+    image: grafana/loki:3.5.0
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports: ["127.0.0.1:3100:3100"]
+    volumes:
+      - ./loki/config.yaml:/etc/loki/config.yaml:ro,z
+      - ./data/loki:/loki:z
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  tempo:
+    <<: *restart
+    image: grafana/tempo:2.8.0
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    ports: ["127.0.0.1:3200:3200"]
+    volumes:
+      - ./tempo/config.yaml:/etc/tempo/config.yaml:ro,z
+      - ./data/tempo:/var/tempo:z
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  grafana:
+    <<: *restart
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports: ["127.0.0.1:3000:3000"]   # <- tailscale serve :3443
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro,z
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro,z
+      - ./data/grafana:/var/lib/grafana/data:z
+    depends_on:
+      init: {condition: service_completed_successfully}
+      prometheus: {condition: service_started}
+      loki: {condition: service_started}
+      tempo: {condition: service_started}
+
+  # Host network so interface/netstat metrics are the host's, not the container's.
+  # Listens only on the compose bridge gateway, so Alloy can scrape it but the
+  # LAN cannot (Fedora's default firewalld zone opens high ports).
+  node-exporter:
+    <<: *restart
+    image: prom/node-exporter:v1.9.1
+    network_mode: host
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --web.listen-address=172.30.0.1:9100
+      - --collector.systemd
+    volumes:
+      - /:/host:ro,rslave
+    security_opt: ["label=disable"]

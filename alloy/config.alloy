@@ -1,0 +1,177 @@
+// Hub collector. Single ingress for the tailnet: OTLP/HTTP on :4318
+// (exposed via `tailscale serve`). Also scrapes local node_exporter and reads
+// the local systemd journal.
+//
+// Label convention used everywhere (metrics + logs + traces):
+//   host_name               which machine
+//   deployment_environment  homelab (room to grow: prod/dev)
+//   service_name            claude-code, claude-rc, node, immich, ...
+// i.e. the OTel resource attributes host.name / deployment.environment /
+// service.name, with dots turned into underscores by Prometheus and Loki.
+
+// ---------------------------------------------------------------- OTLP in
+otelcol.receiver.otlp "default" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    metrics = [otelcol.processor.transform.defaults.input]
+    logs    = [otelcol.processor.transform.defaults.input]
+    traces  = [otelcol.processor.transform.defaults.input]
+  }
+}
+
+// Anything arriving without host/env gets an explicit "unknown" so it is
+// visible in dashboards instead of silently unlabelled.
+otelcol.processor.transform "defaults" {
+  error_mode = "ignore"
+  metric_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["host.name"], "unknown") where attributes["host.name"] == nil`,
+      `set(attributes["deployment.environment"], "homelab") where attributes["deployment.environment"] == nil`,
+    ]
+  }
+  log_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["host.name"], "unknown") where attributes["host.name"] == nil`,
+      `set(attributes["deployment.environment"], "homelab") where attributes["deployment.environment"] == nil`,
+    ]
+  }
+  trace_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["host.name"], "unknown") where attributes["host.name"] == nil`,
+      `set(attributes["deployment.environment"], "homelab") where attributes["deployment.environment"] == nil`,
+    ]
+  }
+  output {
+    metrics = [otelcol.processor.deltatocumulative.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Claude Code exports delta temporality by default; Prometheus wants cumulative.
+otelcol.processor.deltatocumulative "default" {
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+    logs    = [otelcol.exporter.otlphttp.loki.input]
+    traces  = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+// ------------------------------------------------------------ backends out
+otelcol.exporter.prometheus "default" {
+  resource_to_telemetry_conversion = true
+  forward_to                       = [prometheus.remote_write.prom.receiver]
+}
+
+prometheus.remote_write "prom" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki:3100/otlp"
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// ------------------------------------------------- local node_exporter
+prometheus.scrape "node" {
+  targets = [{
+    __address__ = "172.30.0.1:9100",
+    job         = "node",
+    instance    = sys.env("HOST_NAME"),
+  }]
+  forward_to = [prometheus.relabel.local.receiver]
+}
+
+prometheus.relabel "local" {
+  rule {
+    target_label = "host_name"
+    replacement  = sys.env("HOST_NAME")
+  }
+  rule {
+    target_label = "deployment_environment"
+    replacement  = "homelab"
+  }
+  forward_to = [prometheus.remote_write.prom.receiver]
+}
+
+// ------------------------------------------------------ local journald
+// Covers system units, user units (claude-rc) and podman/docker containers
+// that log to journald (CONTAINER_NAME).
+loki.relabel "journal" {
+  forward_to = []
+
+  // defaults, overridden by the more specific rules below
+  rule {
+    target_label = "service_name"
+    replacement  = "system"
+  }
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex         = "(.+)\\.service"
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__journal__systemd_user_unit"]
+    regex         = "(.+)\\.service"
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__journal_container_name"]
+    regex         = "(.+)"
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex         = "(.+)"
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal__systemd_user_unit"]
+    regex         = "(.+)"
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+loki.source.journal "local" {
+  max_age       = "12h"
+  relabel_rules = loki.relabel.journal.rules
+  labels = {
+    host_name              = sys.env("HOST_NAME"),
+    deployment_environment = "homelab",
+    source                 = "journal",
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

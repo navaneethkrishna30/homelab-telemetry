@@ -1,0 +1,80 @@
+// Remote Windows host agent (Alloy MSI). Set HOST_NAME as a machine env var, e.g. desktop.
+// Replace <host>.<tailnet>.ts.net below with the tailnet name of the machine running this stack.
+prometheus.exporter.windows "node" {
+  enabled_collectors = ["cpu", "cs", "logical_disk", "physical_disk", "memory", "net", "os", "system", "service"]
+}
+
+discovery.relabel "node" {
+  targets = prometheus.exporter.windows.node.targets
+  rule {
+    target_label = "job"
+    replacement  = "windows"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOST_NAME")
+  }
+}
+
+prometheus.scrape "node" {
+  targets    = discovery.relabel.node.output
+  forward_to = [otelcol.receiver.prometheus.default.receiver]
+}
+
+loki.source.windowsevent "application" {
+  eventlog_name = "Application"
+  forward_to    = [otelcol.receiver.loki.default.receiver]
+}
+
+loki.source.windowsevent "system" {
+  eventlog_name = "System"
+  forward_to    = [otelcol.receiver.loki.default.receiver]
+}
+
+otelcol.receiver.prometheus "default" {
+  output {
+    metrics = [otelcol.processor.transform.labels.input]
+  }
+}
+
+otelcol.receiver.loki "default" {
+  output {
+    logs = [otelcol.processor.transform.labels.input]
+  }
+}
+
+otelcol.processor.transform "labels" {
+  error_mode = "ignore"
+  metric_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["host.name"], sys.env("HOST_NAME"))`,
+      `set(attributes["deployment.environment"], "homelab")`,
+    ]
+  }
+  log_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["host.name"], sys.env("HOST_NAME"))`,
+      `set(attributes["deployment.environment"], "homelab")`,
+      `set(attributes["service.name"], "windows-eventlog")`,
+    ]
+  }
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.hub.input]
+    logs    = [otelcol.exporter.otlphttp.hub.input]
+  }
+}
+
+otelcol.exporter.otlphttp "hub" {
+  client {
+    endpoint = "https://<host>.<tailnet>.ts.net:4318"
+  }
+}

@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+
+# Host and Claude Code metrics arrive via Alloy remote_write.
+# Only the stack's own components are scraped directly.
+scrape_configs:
+  - job_name: telemetry-stack
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels: {service: prometheus}
+      - targets: ["loki:3100"]
+        labels: {service: loki}
+      - targets: ["tempo:3200"]
+        labels: {service: tempo}
+      - targets: ["alloy:12345"]
+        labels: {service: alloy}
+      - targets: ["grafana:3000"]
+        labels: {service: grafana}

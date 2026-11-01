@@ -112,7 +112,7 @@ services:
       loki: {condition: service_started}
       tempo: {condition: service_started}
 
-  # Immich (apps user's rootless podman, port 2283 on the host). Polls its HTTP API; no published
+  # Immich (Docker, port 2283 on the host). Polls its HTTP API; no published
   # port, Prometheus scrapes it on the compose network. IMMICH_API_KEY is optional: without it only
   # liveness and latency are exported.
   immich-exporter:

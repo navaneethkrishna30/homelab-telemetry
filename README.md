@@ -1,39 +1,21 @@
 # homelab-telemetry
 
 A single-node observability stack for a homelab, run with Docker Compose and reachable only over a
-[Tailscale](https://tailscale.com) tailnet. It collects **metrics, logs and traces** from the host it runs on and from
-other machines on the tailnet, and ships dashboards for **Claude Code** usage (cost, tokens, tools, per-session detail).
+[Tailscale](https://tailscale.com) tailnet. It collects **metrics, logs and traces** from its own host and from other
+machines on the tailnet, and ships dashboards for **Claude Code** usage and for **Immich**.
 
 ```
-other machines ──OTLP/HTTPS──┐           ┌───────────────────────────────────────┐
-(Claude Code, Alloy agent)   │  tailscale│ Grafana Alloy (collector, 127.0.0.1)  │
-                             └──  serve ─►   ├─► Prometheus  metrics   (45d)     │
-this host: node_exporter, journald ───────►   ├─► Loki        logs      (45d)     │
-this host: Claude Code ───────────────────►   └─► Tempo       traces    (45d)     │
-                                          │ Grafana (tailnet-only)                │
-                                          └───────────────────────────────────────┘
+other machines ──OTLP/HTTPS──► tailscale serve ──► Grafana Alloy (collector, 127.0.0.1)
+this host: node_exporter, journald ───────────────►   ├─► Prometheus  metrics  (45d)
+this host: Claude Code ───────────────────────────►   ├─► Loki        logs     (45d)
+                                                      └─► Tempo       traces   (45d)
+                                       Grafana (tailnet-only) reads all three
 ```
-
-| Component | Role |
-|---|---|
-| Grafana Alloy | Single OTLP/HTTP ingest (`:4318`); scrapes local node_exporter; reads the systemd journal; converts delta metrics to cumulative for Prometheus |
-| Prometheus | Metrics (remote-write receiver) |
-| Loki | Logs and Claude Code events (OTLP-native) |
-| Tempo | Traces |
-| Grafana | Dashboards, provisioned from files |
-| node_exporter | Host metrics |
-| immich-exporter | Immich metrics, from its HTTP API (see [Immich](#immich)) |
 
 Everything binds to `127.0.0.1`; `tailscale serve` is the only way in. **Never use `--funnel` for these ports.**
 
-## Label convention
-Metrics, logs and traces share the same labels, so anything new slots in:
-`host_name`, `deployment_environment`, `service_name` (+ `claude_mode` for Claude Code remote-control sessions).
-A new service on any machine only needs OTLP to the hub with
-`OTEL_RESOURCE_ATTRIBUTES=host.name=<host>,deployment.environment=homelab` and its own `OTEL_SERVICE_NAME`.
-
 ## Setup
-Requires Docker with Compose v2 and Tailscale (a Linux host with systemd; SELinux hosts are handled with `:z` mounts).
+Needs Docker with Compose v2 and Tailscale on a Linux host (SELinux is handled with `:z` mounts).
 
 ```bash
 cp .env.example .env            # set the password, HOST_NAME and GRAFANA_ROOT_URL
@@ -41,79 +23,79 @@ docker compose up -d
 ./clients/tailscale-serve.sh    # exposes :4318 (OTLP) and :3443 (Grafana) to the tailnet only
 ```
 
-Grafana: `https://<host>.<tailnet>.ts.net:3443` (user `admin`, password from `.env`; Grafana stores it on first start,
-so change it later in the UI).
+Grafana is at `https://<host>.<tailnet>.ts.net:3443` (user `admin`, password from `.env`; Grafana keeps it from the
+first start, so change it later in the UI). After editing the Loki or Tempo config run
+`docker compose restart loki tempo`; `up -d` does not notice changes to bind-mounted files.
 
-### Claude Code telemetry
+## Labels
+Metrics, logs and traces share `host_name`, `deployment_environment`, `service_name` (plus `claude_mode` for Claude
+Code remote-control sessions). Any new service only needs OTLP to the hub with
+`OTEL_RESOURCE_ATTRIBUTES=host.name=<host>,deployment.environment=homelab` and its own `OTEL_SERVICE_NAME`.
+
+## Logs
+Alloy reads the systemd journal through a **whitelist**: the `keep` rule at the end of `loki.relabel "journal"` in
+`alloy/config.alloy` lists the services that reach Loki. Add a name to the regex to capture another service. The stack's
+own containers keep only `warn`/`error`/`fatal` lines.
+
+## Claude Code telemetry
 Merge the `env` block of `clients/claude-code-settings.json` into `~/.claude/settings.json` (or a managed settings
-file), setting `host.name` and the hub endpoint. For a systemd-run `claude remote-control` service see
+file) and set `host.name` and the hub endpoint. For a systemd-run `claude remote-control` service see
 `clients/systemd/claude-rc-telemetry.conf`.
 
-> **Privacy:** the template turns on `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_ASSISTANT_RESPONSES`, `OTEL_LOG_TOOL_DETAILS`
-> and `OTEL_LOG_TOOL_CONTENT`, so prompts, replies, shell commands and tool output are stored in Loki/Tempo.
-> Turn these off if that's not what you want. `OTEL_LOG_RAW_API_BODIES` is intentionally not enabled.
+> **Privacy:** the template logs prompts, replies, shell commands and tool output to Loki/Tempo. Turn
+> `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_ASSISTANT_RESPONSES`, `OTEL_LOG_TOOL_DETAILS` and `OTEL_LOG_TOOL_CONTENT` off if
+> that's not what you want. `OTEL_LOG_RAW_API_BODIES` is deliberately not enabled.
 
-### Other machines
-Install Alloy there and use `clients/alloy-linux.alloy` or `clients/alloy-windows.alloy` (set `HOST_NAME` in its
-environment and replace `<host>.<tailnet>.ts.net`). They push host metrics and logs to the hub over OTLP.
-The remote-agent configs are lightly tested; check labels on first connect.
+## Other machines
+Install Alloy there and use `clients/alloy-linux.alloy` or `clients/alloy-windows.alloy`: set `HOST_NAME` in its
+environment and replace `<host>.<tailnet>.ts.net`. The remote configs are lightly tested; check labels on first connect.
 
-### Immich
-Immich runs on this host under a separate user (rootless Podman), so its telemetry comes from three places:
+## Immich
+Telemetry comes from three places:
 
 - **`immich-exporter`** polls the Immich API at `IMMICH_URL` (default `http://172.30.0.1:2283`, the compose bridge
   gateway). Liveness and latency always work. Library, disk and job-queue metrics need an admin API key: create one in
-  Immich under Account Settings → API Keys, set `IMMICH_API_KEY` in `.env`, then `docker compose up -d immich-exporter`.
-- **Immich's own `/metrics`** (Prometheus job `immich-native`; API on `:8081`, microservices on `:8082`) needs
-  `IMMICH_TELEMETRY_INCLUDE=all` in the Immich server environment and both ports published to `172.30.0.1`. Those are
-  changes to Immich's Quadlet, not to this stack. Run once, as root, on the Immich host:
+  Immich (Account Settings → API Keys), set `IMMICH_API_KEY` in `.env`, then `docker compose up -d immich-exporter`.
+- **Immich's own `/metrics`** (Prometheus job `immich-native`) needs two changes to the Immich server container:
+  `IMMICH_TELEMETRY_INCLUDE=all` in its environment, and ports 8081 (API) and 8082 (microservices) published on the
+  compose bridge gateway:
 
-  ```bash
-  sudo -u apps sh -c 'printf "\nIMMICH_TELEMETRY_INCLUDE=all\n" >> /home/apps/immich/.env'
-  sudo sed -i '/^PublishPort=2283:2283/a PublishPort=172.30.0.1:8081:8081\nPublishPort=172.30.0.1:8082:8082' /etc/containers/systemd/users/965/immich-server.container
-  sudo -u apps XDG_RUNTIME_DIR=/run/user/965 systemctl --user daemon-reload
-  sudo -u apps XDG_RUNTIME_DIR=/run/user/965 systemctl --user restart immich-server
+  ```yaml
+  environment:
+    IMMICH_TELEMETRY_INCLUDE: all
+  ports:
+    - "172.30.0.1:8081:8081"
+    - "172.30.0.1:8082:8082"
   ```
 
-  The `sed` adds the port lines on every run, so don't run it twice. Check `curl http://172.30.0.1:8081/metrics`.
-- **Container logs** already reach Loki through journald (`service_name` = `immich_server`, `immich_postgres`,
-  `immich_redis`, `immich_machine_learning`), with no configuration.
+  Check with `curl http://172.30.0.1:8081/metrics`.
+- **Container logs** reach Loki through journald when Immich's containers log to journald and their names are in the
+  log whitelist.
 
 ## Dashboards
-`grafana/dashboards/` is provisioned automatically. They are generated by `dashboards/gen.py`
-(`python3 dashboards/gen.py`, then Grafana reloads within ~10s):
+`grafana/dashboards/` is provisioned automatically and generated by `python3 dashboards/gen.py` (Grafana reloads within
+about 10 s): **Claude Code - Overview**, **Claude Code - Session** and **Immich - Overview**. Admin-only Immich tiles
+show `n/a` until `IMMICH_API_KEY` is set. Gotchas:
 
-- **Claude Code - Overview**: machine selector; sessions, prompts, API requests, errors, active time, cost, tokens,
-  cache hit rate; daily cost/tokens per model; model breakdown; tool usage; sessions table linking to the detail page.
-- **Claude Code - Session**: context size and tokens by type per API call, cache hit rate, latency, cumulative cost,
-  per-message breakdown with Tempo trace links, conversation transcript, tool invocations, event timeline.
-- **Immich - Overview**: server status, ping, library size, disk used, photo and video counts, failed jobs, users;
-  Immich logs with a warnings and errors chart; library over time and per user; disk over time; job queue and counts;
-  Immich's internal timings (from the native metrics). Admin-only tiles show `n/a` until `IMMICH_API_KEY` is set.
-
-How they query:
-- Per-event data comes from Loki. Claude Code event fields (`session_id`, `model`, `input_tokens`, ...) are structured
-  metadata, so they are filtered with `| field="x"` and aggregated with `| unwrap field`.
+- Claude Code event fields (`session_id`, `model`, `input_tokens`, ...) are Loki structured metadata: filter with
+  `| field="x"`, aggregate with `| unwrap field`.
 - Active time and lines changed come from Prometheus via `prom_total()`; plain `increase()` loses the first value of
   every new per-session series.
-- Daily bars use UTC days. Loki floors the end of a 1d-step query to UTC midnight, so the Overview defaults to
-  `now-6d -> now+1d`; keep the range ending at `now+1d` to see today's bar.
-- The session dropdown comes from the `session_id` label on `claude_code_cost_usage_USD_total`.
+- Daily bars are UTC days, and Loki floors a 1d-step query to UTC midnight, so keep the range ending at `now+1d` to see
+  today's bar.
 
 ## Not included yet
-Alert and recording rules, and long-term object storage (retention is 45 days everywhere).
+Alert and recording rules, and long-term storage (retention is 45 days everywhere).
 
 ## Layout
 ```
 compose.yaml  .env.example
 alloy/ prometheus/ loki/ tempo/       service configs
-grafana/provisioning/                  datasources + dashboard provider
-grafana/dashboards/                    generated dashboard JSON
+grafana/                               provisioning and generated dashboard JSON
 dashboards/gen.py                      dashboard generator
 immich-exporter/exporter.py            Immich API → Prometheus exporter
 clients/                               templates for other machines
-data/                                  bind-mounted runtime data (git-ignored)
+data/                                  runtime data (git-ignored)
 ```
 
-## License
-MIT
+MIT licensed.

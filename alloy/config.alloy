@@ -102,7 +102,9 @@ prometheus.scrape "node" {
     job         = "node",
     instance    = sys.env("HOST_NAME"),
   }]
-  forward_to = [prometheus.relabel.local.receiver]
+  // 15s so the Immich backup status (textfile metrics, same job) is fresh on the dashboard.
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.local.receiver]
 }
 
 prometheus.relabel "local" {

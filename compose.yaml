@@ -112,6 +112,22 @@ services:
       loki: {condition: service_started}
       tempo: {condition: service_started}
 
+  # Immich (apps user's rootless podman, port 2283 on the host). Polls its HTTP API; no published
+  # port, Prometheus scrapes it on the compose network. IMMICH_API_KEY is optional: without it only
+  # liveness and latency are exported.
+  immich-exporter:
+    <<: *restart
+    image: python:3.13-alpine
+    command: ["python", "-u", "/app/exporter.py"]
+    environment:
+      IMMICH_URL: ${IMMICH_URL:-http://172.30.0.1:2283}
+      IMMICH_API_KEY: ${IMMICH_API_KEY:-}
+      HOST_NAME: ${HOST_NAME:-localhost}
+    volumes:
+      - ./immich-exporter/exporter.py:/app/exporter.py:ro,z
+    depends_on:
+      init: {condition: service_completed_successfully}
+
   # Host network so interface/netstat metrics are the host's, not the container's.
   # Listens only on the compose bridge gateway, so Alloy can scrape it but the
   # LAN cannot (Fedora's default firewalld zone opens high ports).

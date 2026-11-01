@@ -1,0 +1,1330 @@
+{
+ "uid": "immich-overview",
+ "title": "Immich - Overview",
+ "tags": [
+  "immich"
+ ],
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "graphTooltip": 1,
+ "refresh": "1m",
+ "timezone": "browser",
+ "time": {
+  "from": "now-7d",
+  "to": "now"
+ },
+ "templating": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "row",
+   "id": 1,
+   "title": "Status",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Server",
+   "description": "Immich API answers /api/server/ping from the telemetry network.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_up{service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "green"
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "red"
+        },
+        "1": {
+         "text": "UP",
+         "color": "green"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 2,
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Ping",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_ping_duration_seconds{service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "decimals": 3
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 3,
+   "gridPos": {
+    "x": 3,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Library size",
+   "description": "Photos and videos stored, from the Immich API (needs IMMICH_API_KEY).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_usage_bytes{type=\"total\",service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 4,
+   "gridPos": {
+    "x": 6,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Disk used",
+   "description": "Used share of the filesystem holding the Immich upload location.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_disk_used_bytes{service_name=\"immich\"}) / max(immich_disk_size_bytes{service_name=\"immich\"}) * 100",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 5,
+   "gridPos": {
+    "x": 9,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Photos",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_photos_total{service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 6,
+   "gridPos": {
+    "x": 12,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Videos",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_videos_total{service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 7,
+   "gridPos": {
+    "x": 15,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Failed jobs",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(immich_jobs_count{state=\"failed\",service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "n/a",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "red"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 8,
+   "gridPos": {
+    "x": 18,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Users",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(immich_users_total{job=\"immich-native\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 9,
+   "gridPos": {
+    "x": 21,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "row",
+   "id": 10,
+   "title": "Logs",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "logs",
+   "title": "Immich logs (server, ML, database, redis)",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "{service_name=~\"immich_(server|machine_learning|postgres|redis)\"}",
+     "legendFormat": "",
+     "refId": "A",
+     "queryType": "range",
+     "editorMode": "code",
+     "maxLines": 2000
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "enableLogDetails": true,
+    "sortOrder": "Descending",
+    "prettifyLogMessage": false,
+    "dedupStrategy": "none",
+    "showLabels": false,
+    "showCommonLabels": false
+   },
+   "id": 11,
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 16,
+    "h": 10
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Warnings & errors by service",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (service_name, detected_level)(count_over_time({service_name=~\"immich_(server|machine_learning|postgres|redis)\"} !~ \"ExperimentalWarning|trace-warnings|LOG:  \" | detected_level=~\"warn|error|fatal\" [$__interval]))",
+     "legendFormat": "{{service_name}} {{detected_level}}",
+     "refId": "A",
+     "queryType": "range",
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 80,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "sum"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 12,
+   "gridPos": {
+    "x": 16,
+    "y": 6,
+    "w": 8,
+    "h": 10
+   }
+  },
+  {
+   "type": "row",
+   "id": 13,
+   "title": "Library & storage",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Photos & videos",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_photos_total{service_name=\"immich\"})",
+     "legendFormat": "photos",
+     "refId": "A",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_videos_total{service_name=\"immich\"})",
+     "legendFormat": "videos",
+     "refId": "B",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 15,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "last"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 14,
+   "gridPos": {
+    "x": 0,
+    "y": 17,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Disk: used vs available",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_disk_used_bytes{service_name=\"immich\"})",
+     "legendFormat": "used",
+     "refId": "A",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(immich_disk_available_bytes{service_name=\"immich\"})",
+     "legendFormat": "available",
+     "refId": "B",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 15,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "last"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 15,
+   "gridPos": {
+    "x": 12,
+    "y": 17,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "table",
+   "title": "Library size per user",
+   "description": "Bytes stored per Immich user (photos + videos).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (user)(immich_user_usage_bytes{service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code",
+     "format": "table"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      },
+      "filterable": true
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Library"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "bytes"
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true
+      },
+      "renameByName": {
+       "user": "User",
+       "Value": "Library"
+      }
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "fields": {},
+      "sort": [
+       {
+        "field": "Library",
+        "desc": true
+       }
+      ]
+     }
+    }
+   ],
+   "id": 16,
+   "gridPos": {
+    "x": 0,
+    "y": 25,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Library size by type",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (type)(immich_usage_bytes{service_name=\"immich\"})",
+     "legendFormat": "{{type}}",
+     "refId": "A",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 15,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "last"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 17,
+   "gridPos": {
+    "x": 12,
+    "y": 25,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "row",
+   "id": 18,
+   "title": "Jobs",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 33,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Job queue: waiting + active",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (job)(immich_jobs_count{service_name=\"immich\",state=~\"waiting|active\"})",
+     "legendFormat": "{{job}}",
+     "refId": "A",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 15,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "max",
+      "last"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 19,
+   "gridPos": {
+    "x": 0,
+    "y": 34,
+    "w": 12,
+    "h": 9
+   }
+  },
+  {
+   "type": "table",
+   "title": "Job counts by state",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (job, state)(immich_jobs_count{service_name=\"immich\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code",
+     "format": "table"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      },
+      "filterable": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true
+      },
+      "renameByName": {
+       "job": "Job",
+       "state": "State",
+       "Value": "Count"
+      }
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "fields": {},
+      "sort": [
+       {
+        "field": "Count",
+        "desc": true
+       }
+      ]
+     }
+    }
+   ],
+   "id": 20,
+   "gridPos": {
+    "x": 12,
+    "y": 34,
+    "w": 12,
+    "h": 9
+   }
+  },
+  {
+   "type": "row",
+   "id": 21,
+   "title": "Server internals",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 43,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "HTTP requests by status",
+   "description": "Immich API requests per second.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (http_response_status_code)(rate(http_server_request_duration_seconds_count{job=\"immich-native\"}[5m]))",
+     "legendFormat": "HTTP {{http_response_status_code}}",
+     "refId": "A",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 15,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "mean",
+      "max"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 22,
+   "gridPos": {
+    "x": 0,
+    "y": 44,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "HTTP latency (p50 / p95)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "histogram_quantile(0.5, sum by (le)(rate(http_server_request_duration_seconds_bucket{job=\"immich-native\"}[5m])))",
+     "legendFormat": "p50",
+     "refId": "A",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "histogram_quantile(0.95, sum by (le)(rate(http_server_request_duration_seconds_bucket{job=\"immich-native\"}[5m])))",
+     "legendFormat": "p95",
+     "refId": "B",
+     "instant": false,
+     "range": true,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "showPoints": "never",
+      "fillOpacity": 15,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "barAlignment": 0,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "mean",
+      "max"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 23,
+   "gridPos": {
+    "x": 12,
+    "y": 44,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "table",
+   "title": "Slowest internal operations (mean since restart)",
+   "description": "Mean time of Immich's internal operations (database, jobs, locks, ML, events) since the server started.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "topk(10, label_replace(sum by (__name__)({__name__=~\"immich_.*_duration_sum\",job=\"immich-native\"}), \"op\", \"$1\", \"__name__\", \"(.*)_duration_sum\") / on(op) label_replace(sum by (__name__)({__name__=~\"immich_.*_duration_count\",job=\"immich-native\"}), \"op\", \"$1\", \"__name__\", \"(.*)_duration_count\"))",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code",
+     "format": "table"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      },
+      "filterable": true
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Mean"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "ms"
+       },
+       {
+        "id": "decimals",
+        "value": 2
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true
+      },
+      "renameByName": {
+       "op": "Operation",
+       "Value": "Mean"
+      }
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "fields": {},
+      "sort": [
+       {
+        "field": "Mean",
+        "desc": true
+       }
+      ]
+     }
+    }
+   ],
+   "id": 24,
+   "gridPos": {
+    "x": 0,
+    "y": 52,
+    "w": 24,
+    "h": 10
+   }
+  }
+ ],
+ "links": [],
+ "annotations": {
+  "list": []
+ }
+}

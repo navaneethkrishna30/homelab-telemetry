@@ -16,3 +16,15 @@ scrape_configs:
         labels: {service: alloy}
       - targets: ["grafana:3000"]
         labels: {service: grafana}
+  # Immich, via immich-exporter (API polling; see immich-exporter/exporter.py).
+  - job_name: immich
+    static_configs:
+      - targets: ["immich-exporter:9101"]
+  # Immich's native metrics (IMMICH_TELEMETRY_INCLUDE on the apps-owned server; published on the
+  # bridge gateway). Down until that change is applied.
+  - job_name: immich-native
+    static_configs:
+      - targets: ["172.30.0.1:8081"]
+        labels: {component: api}
+      - targets: ["172.30.0.1:8082"]
+        labels: {component: microservices}

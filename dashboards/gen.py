@@ -524,8 +524,120 @@ def session():
     return d.build()
 
 
+# ==================================================================== IMMICH
+def immich():
+    # Exporter metrics (immich-exporter) come first, then Immich's native /metrics (job immich-native).
+    # Logs are already in Loki via journald.
+    d = Dash("immich-overview", "Immich - Overview", [], "now-7d", ["immich"])
+    S = '{service_name="immich"}'
+    N = '{job="immich-native"}'
+    LOGS = '{service_name=~"immich_(server|machine_learning|postgres|redis)"}'
+
+    def admin_stat(*a, **kw):
+        # Admin-only metrics: n/a instead of a misleading 0 when no API key is set.
+        p = stat(*a, **kw)
+        p["fieldConfig"]["defaults"]["noValue"] = "n/a"
+        return p
+
+    def prom_table(title, targets, transformations, overrides=None, desc=""):
+        # Prometheus instant queries as one table row per series. format=table makes Grafana return a
+        # single frame; bar gauges with these queries show an error here.
+        for t in targets:
+            t["format"] = "table"
+        return table(title, targets, transformations, overrides=overrides, desc=desc, ds=PROM)
+
+    # --- status (top)
+    d.row("Status")
+    up = stat("Server", f"max(immich_up{S})", color="green", prom_q=True,
+              desc="Immich API answers /api/server/ping from the telemetry network.")
+    up["fieldConfig"]["defaults"]["mappings"] = [{"type": "value", "options": {
+        "0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]
+    d.add(up, 3, 4)
+    d.add(stat("Ping", f"max(immich_ping_duration_seconds{S})", unit="s", decimals=3, color="blue",
+               prom_q=True), 3, 4)
+    d.add(admin_stat("Library size", f'max(immich_usage_bytes{{type="total",service_name="immich"}})',
+                     unit="bytes", color="blue", prom_q=True,
+                     desc="Photos and videos stored, from the Immich API (needs IMMICH_API_KEY)."), 3, 4)
+    d.add(admin_stat("Disk used", f"max(immich_disk_used_bytes{S}) / max(immich_disk_size_bytes{S}) * 100",
+                     unit="percent", decimals=1, color="blue", prom_q=True,
+                     desc="Used share of the filesystem holding the Immich upload location."), 3, 4)
+    d.add(admin_stat("Photos", f"max(immich_photos_total{S})", color="blue", prom_q=True), 3, 4)
+    d.add(admin_stat("Videos", f"max(immich_videos_total{S})", color="blue", prom_q=True), 3, 4)
+    d.add(admin_stat("Failed jobs", f'sum(immich_jobs_count{{state="failed",service_name="immich"}})',
+                     color="red", prom_q=True), 3, 4)
+    d.add(stat("Users", f"sum(immich_users_total{N})", color="blue", prom_q=True), 3, 4)
+
+    d.row("Logs")
+    d.add(logs("Immich logs (server, ML, database, redis)", LOGS, max_lines=2000), 16, 10)
+    d.add(timeseries("Warnings & errors by service", [
+        # Node's ExperimentalWarning and Postgres' routine LOG lines reach stderr, so Loki tags them as errors.
+        loki(f'sum by (service_name, detected_level)(count_over_time({LOGS} !~ "ExperimentalWarning|trace-warnings|LOG:  " '
+             f'| detected_level=~"warn|error|fatal" [$__interval]))',
+             legend="{{service_name}} {{detected_level}}", ref="A"),
+    ], unit="short", bars=True, stack=True, legend=("sum",)), 8, 10)
+
+    # --- library & storage
+    d.row("Library & storage")
+    d.add(timeseries("Photos & videos", [
+        prom(f"max(immich_photos_total{S})", legend="photos", ref="A"),
+        prom(f"max(immich_videos_total{S})", legend="videos", ref="B"),
+    ], unit="short", ds=PROM, legend=("last",)), 12, 8)
+    d.add(timeseries("Disk: used vs available", [
+        prom(f"max(immich_disk_used_bytes{S})", legend="used", ref="A"),
+        prom(f"max(immich_disk_available_bytes{S})", legend="available", ref="B"),
+    ], unit="bytes", ds=PROM, legend=("last",)), 12, 8)
+    d.add(prom_table("Library size per user", [
+        prom(f"max by (user)(immich_user_usage_bytes{S})", ref="A", instant=True),
+    ], [{"id": "organize", "options": {"excludeByName": {"Time": True},
+                                       "renameByName": {"user": "User", "Value": "Library"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "Library", "desc": True}]}}],
+        overrides=[ov("Library", unit="bytes")],
+        desc="Bytes stored per Immich user (photos + videos)."), 12, 8)
+    d.add(timeseries("Library size by type", [
+        prom(f"max by (type)(immich_usage_bytes{S})", legend="{{type}}", ref="A"),
+    ], unit="bytes", ds=PROM, legend=("last",)), 12, 8)
+
+    # --- jobs
+    d.row("Jobs")
+    d.add(timeseries("Job queue: waiting + active", [
+        prom(f'sum by (job)(immich_jobs_count{{service_name="immich",state=~"waiting|active"}})', legend="{{job}}", ref="A"),
+    ], unit="short", ds=PROM, legend=("max", "last"), stack=True), 12, 9)
+    d.add(prom_table("Job counts by state", [
+        prom(f"sum by (job, state)(immich_jobs_count{S})", ref="A", instant=True),
+    ], [{"id": "organize", "options": {"excludeByName": {"Time": True}, "renameByName": {
+        "job": "Job", "state": "State", "Value": "Count"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "Count", "desc": True}]}}]), 12, 9)
+
+    # --- server internals (Immich native /metrics)
+    d.row("Server internals")
+    d.add(timeseries("HTTP requests by status", [
+        prom(f'sum by (http_response_status_code)(rate(http_server_request_duration_seconds_count{N}[5m]))',
+             legend="HTTP {{http_response_status_code}}", ref="A"),
+    ], unit="reqps", ds=PROM, legend=("mean", "max"), desc="Immich API requests per second."), 12, 8)
+    d.add(timeseries("HTTP latency (p50 / p95)", [
+        prom(f"histogram_quantile(0.5, sum by (le)(rate(http_server_request_duration_seconds_bucket{N}[5m])))",
+             legend="p50", ref="A"),
+        prom(f"histogram_quantile(0.95, sum by (le)(rate(http_server_request_duration_seconds_bucket{N}[5m])))",
+             legend="p95", ref="B"),
+    ], unit="s", ds=PROM, legend=("mean", "max")), 12, 8)
+    # Lifetime mean (sum / count since restart): rate() would drop __name__ and collide the series.
+    d.add(prom_table("Slowest internal operations (mean since restart)", [
+        # Dividing per-name sums drops __name__, so both sides are renamed onto an "op" label first.
+        prom('topk(10, label_replace(sum by (__name__)({__name__=~"immich_.*_duration_sum",job="immich-native"}),'
+             ' "op", "$1", "__name__", "(.*)_duration_sum")'
+             ' / on(op) label_replace(sum by (__name__)({__name__=~"immich_.*_duration_count",job="immich-native"}),'
+             ' "op", "$1", "__name__", "(.*)_duration_count"))',
+             ref="A", instant=True),
+    ], [{"id": "organize", "options": {"excludeByName": {"Time": True}, "renameByName": {
+        "op": "Operation", "Value": "Mean"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "Mean", "desc": True}]}}],
+        overrides=[ov("Mean", unit="ms", decimals=2)],
+        desc="Mean time of Immich's internal operations (database, jobs, locks, ML, events) since the server started."), 24, 10)
+    return d.build()
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, dash in (("claude-overview", overview()), ("claude-session", session())):
+    for name, dash in (("claude-overview", overview()), ("claude-session", session()), ("immich-overview", immich())):
         (OUT / f"{name}.json").write_text(json.dumps(dash, indent=1))
         print("wrote", OUT / f"{name}.json")

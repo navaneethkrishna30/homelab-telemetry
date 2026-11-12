@@ -104,6 +104,7 @@ prometheus.scrape "node" {
   }]
   // 5s for the hardware dashboards (temps, clocks, power move fast).
   scrape_interval = "5s"
+  scrape_timeout  = "4s"   // must not exceed the interval (default 10s)
   forward_to      = [prometheus.relabel.local.receiver]
 }
 

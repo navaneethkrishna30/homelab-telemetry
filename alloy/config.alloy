@@ -102,21 +102,21 @@ prometheus.scrape "node" {
     job         = "node",
     instance    = sys.env("HOST_NAME"),
   }]
-  // 5s for the hardware dashboards (temps, clocks, power move fast).
-  scrape_interval = "5s"
-  scrape_timeout  = "4s"   // must not exceed the interval (default 10s)
+  // Everything in the homelab is collected every 15s; the Machines page refreshes at the same rate.
+  scrape_interval = "15s"
+  scrape_timeout  = "10s"  // must not exceed the interval
   forward_to      = [prometheus.relabel.local.receiver]
 }
 
-// Intel iGPU (intel-gpu-exporter samples every 5s itself).
+// Intel iGPU (intel-gpu-exporter samples every 5s itself; we keep every third).
 prometheus.scrape "igpu" {
   targets = [{
     __address__ = "intel-gpu-exporter:9102",
     job         = "intel-gpu",
     instance    = sys.env("HOST_NAME"),
   }]
-  scrape_interval = "5s"
-  scrape_timeout  = "4s"
+  scrape_interval = "15s"
+  scrape_timeout  = "10s"
   forward_to      = [prometheus.relabel.local.receiver]
 }
 

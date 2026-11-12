@@ -1,6 +1,10 @@
 global:
   scrape_interval: 15s
 
+# host:* signals for the Hosts overview (see rules/hosts.yml).
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
 # Host and Claude Code metrics arrive via Alloy remote_write.
 # Only the stack's own components are scraped directly.
 scrape_configs:

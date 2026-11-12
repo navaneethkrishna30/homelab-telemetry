@@ -66,6 +66,7 @@ services:
     ports: ["127.0.0.1:9090:9090"]
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,z
+      - ./prometheus/rules:/etc/prometheus/rules:ro,z
       - ./data/prometheus:/prometheus:z
     depends_on:
       init: {condition: service_completed_successfully}
@@ -136,10 +137,16 @@ services:
     image: prom/node-exporter:v1.9.1
     network_mode: host
     pid: host
+    user: "0:0"   # RAPL energy counters (/sys/class/powercap/*/energy_uj) are root-only
     command:
       - --path.rootfs=/host
+      - --path.sysfs=/host/sys                 # Docker masks /sys/devices/virtual/powercap (RAPL) in the container's own /sys
+      - --path.udev.data=/host/run/udev/data   # disk model/serial labels
       - --web.listen-address=172.30.0.1:9100
       - --collector.systemd
+      - --collector.drm          # GPU busy %, VRAM (amdgpu only)
+      - --collector.cpu.info     # CPU model in node_cpu_info
+      - --collector.processes    # process/thread counts and states
       - --collector.textfile.directory=/var/lib/node-textfile
     volumes:
       - /:/host:ro,rslave

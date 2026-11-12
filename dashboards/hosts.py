@@ -40,7 +40,7 @@ class Host:
     description: str
     battery: bool = False
     wifi: bool = False
-    amdgpu: bool = False
+    gpu: str = ""           # "amd" (drm collector + hwmon) or "intel" (intel-gpu-exporter)
     systemd: bool = False   # node_exporter runs --collector.systemd
     journal: bool = False   # journal is shipped to Loki
     extra_tags: list = field(default_factory=list)
@@ -48,9 +48,10 @@ class Host:
 
 HOSTS = [
     Host("fedora", "fedora · laptop", "Ryzen AI 7 350, Radeon 860M, 512 GB NVMe, battery",
-         battery=True, wifi=True, amdgpu=True),
-    Host("veronica", "veronica · homelab", "Asus NUC, always on: Immich, Cortex, telemetry hub",
-         systemd=True, journal=True),
+         battery=True, wifi=True, gpu="amd"),
+    Host("veronica", "veronica · homelab",
+         "Asus NUC, i3-1220P (2 P + 8 E cores), UHD Graphics; always on: Immich, Cortex, telemetry hub",
+         systemd=True, journal=True, gpu="intel"),
 ]
 
 
@@ -242,6 +243,8 @@ def overview():
         ("Memory usage", "host:memory_usage:ratio", "percentunit", dict(lo=0, hi=1)),
         ("GPU busy", "host:gpu_busy:ratio", "percentunit", dict(lo=0, hi=1)),
         ("Average CPU clock", "host:cpu_frequency_hertz:avg", "hertz", dict(lo=0)),
+        ("GPU clock", "host:gpu_frequency_hertz", "hertz", dict(lo=0)),
+        ("Fans (fastest)", "host:fan_rpm:max", "rotrpm", dict(lo=0)),
     ]:
         g.add(ts(title, [prom(f'{rec}{{host_name=~"$host"}}', "{{host_name}}")], unit, **kw), 12, 8)
     g.add(ts("Network (↓ receive / ↑ transmit below)", [
@@ -291,9 +294,12 @@ def host_dashboard(host: Host):
     g.add(stat("CPU temp", f"host:cpu_temp_celsius{{{s}}}", "celsius", TEMP, decimals=0), 3, 4)
     g.add(stat("CPU power", f"host:cpu_power_watts{{{s}}}", "watt", decimals=1), 3, 4)
     g.add(stat("Memory", f"host:memory_usage:ratio{{{s}}}", "percentunit", PCT, decimals=0), 3, 4)
-    if host.amdgpu:
+    if host.gpu:
         g.add(stat("GPU", f"host:gpu_busy:ratio{{{s}}}", "percentunit", PCT, decimals=0), 3, 4)
+    if host.gpu == "amd":
         g.add(stat("GPU temp", f"host:gpu_temp_celsius{{{s}}}", "celsius", TEMP, decimals=0), 3, 4)
+    elif host.gpu == "intel":
+        g.add(stat("GPU clock", f"host:gpu_frequency_hertz{{{s}}}", "hertz", decimals=0), 3, 4)
     g.add(stat("Disk temp", f"host:disk_temp_celsius:max{{{s}}}", "celsius", DISK_TEMP, decimals=0), 3, 4)
     if host.battery:
         g.add(stat("Battery", f"host:battery_capacity:ratio{{{s}}}", "percentunit", BATTERY, decimals=0), 3, 4)
@@ -318,7 +324,7 @@ def host_dashboard(host: Host):
         {"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}]), 12, 8)
     power = [prom(f"rate(node_rapl_package_joules_total{{{s}}}[{rate}])", "package (RAPL)", "A"),
              prom(f"rate(node_rapl_core_joules_total{{{s}}}[{rate}])", "cores (RAPL)", "B")]
-    if host.amdgpu:
+    if host.gpu == "amd":
         power.append(prom(hwmon("node_hwmon_power_average_watt", s, "amdgpu"), "SoC PPT (amdgpu)", "C"))
     g.add(ts("Power", power, "watt", lo=0), 12, 8)
     g.add(ts("CPU temperatures", [prom(hwmon("node_hwmon_temp_celsius", s, "k10temp|zenpower|coretemp"),
@@ -335,7 +341,7 @@ def host_dashboard(host: Host):
     ], "ops", fill=0), 12, 8)
 
     # ---- GPU
-    if host.amdgpu:
+    if host.gpu == "amd":
         g.section("GPU")
         g.add(ts("GPU busy", [prom(f"node_drm_gpu_busy_percent{{{s}}} / 100", "{{card}}")],
                  "percentunit", lo=0, hi=1), 8, 8)
@@ -353,6 +359,20 @@ def host_dashboard(host: Host):
             ], "bytes", lo=0, overrides=[{"matcher": {"id": "byName", "options": "size"}, "properties": [
                 {"id": "custom.fillOpacity", "value": 0},
                 {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}}]}]), 12, 7)
+
+    if host.gpu == "intel":
+        g.section("GPU")
+        g.add(ts("Engines busy", [prom(f"intel_gpu_engine_busy_ratio{{{s}}}", "{{engine}}")],
+                 "percentunit", lo=0, hi=1, fill=0,
+                 desc="Render/3D: graphics and compute (OpenVINO). Video / VideoEnhance: hardware decode, "
+                      "encode and scaling (Immich transcoding and thumbnails). Blitter: copies."), 12, 8)
+        g.add(ts("GPU clock", [prom(f"intel_gpu_frequency_hertz{{{s}}}", "{{type}}")], "hertz", lo=0,
+                 fill=0), 12, 8)
+        g.add(ts("Power (RAPL)", [prom(f"intel_gpu_power_watts{{{s}}}", "{{domain}}")], "watt", lo=0), 8, 8)
+        g.add(ts("Asleep (RC6)", [prom(f"intel_gpu_rc6_ratio{{{s}}}", "rc6")], "percentunit", lo=0, hi=1,
+                 fill=30, desc="Share of time the GPU was powered down. Near 100% when idle."), 8, 8)
+        g.add(state_timeline("Throttling", f"intel_gpu_throttle{{{s}}}", "{{reason}}",
+                             value_map([(0, "ok", "green"), (1, "throttled", "red")])), 8, 8)
 
     # ---- memory
     g.section("Memory")

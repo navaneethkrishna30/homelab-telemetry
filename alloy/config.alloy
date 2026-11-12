@@ -108,6 +108,18 @@ prometheus.scrape "node" {
   forward_to      = [prometheus.relabel.local.receiver]
 }
 
+// Intel iGPU (intel-gpu-exporter samples every 5s itself).
+prometheus.scrape "igpu" {
+  targets = [{
+    __address__ = "intel-gpu-exporter:9102",
+    job         = "intel-gpu",
+    instance    = sys.env("HOST_NAME"),
+  }]
+  scrape_interval = "5s"
+  scrape_timeout  = "4s"
+  forward_to      = [prometheus.relabel.local.receiver]
+}
+
 prometheus.relabel "local" {
   rule {
     target_label = "host_name"

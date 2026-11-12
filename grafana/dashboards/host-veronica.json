@@ -1,7 +1,7 @@
 {
   "uid": "host-veronica",
   "title": "veronica · homelab",
-  "description": "Asus NUC, always on: Immich, Cortex, telemetry hub",
+  "description": "Asus NUC, i3-1220P (2 P + 8 E cores), UHD Graphics; always on: Immich, Cortex, telemetry hub",
   "tags": [
     "host",
     "hosts"
@@ -689,6 +689,132 @@
     },
     {
       "type": "stat",
+      "title": "GPU",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "host:gpu_busy:ratio{host_name=\"veronica\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.7,
+                "color": "yellow"
+              },
+              {
+                "value": 0.9,
+                "color": "red"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "justifyMode": "center"
+      },
+      "id": 12,
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "GPU clock",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "host:gpu_frequency_hertz{host_name=\"veronica\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "hertz",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "justifyMode": "center"
+      },
+      "id": 13,
+      "gridPos": {
+        "x": 15,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
       "title": "Disk temp",
       "description": "",
       "datasource": {
@@ -746,9 +872,9 @@
         },
         "justifyMode": "center"
       },
-      "id": 12,
+      "id": 14,
       "gridPos": {
-        "x": 12,
+        "x": 18,
         "y": 5,
         "w": 3,
         "h": 4
@@ -813,9 +939,9 @@
         },
         "justifyMode": "center"
       },
-      "id": 13,
+      "id": 15,
       "gridPos": {
-        "x": 15,
+        "x": 21,
         "y": 5,
         "w": 3,
         "h": 4
@@ -826,7 +952,7 @@
       "title": "CPU",
       "collapsed": false,
       "panels": [],
-      "id": 14,
+      "id": 16,
       "gridPos": {
         "x": 0,
         "y": 9,
@@ -886,7 +1012,7 @@
           "sort": "desc"
         }
       },
-      "id": 15,
+      "id": 17,
       "gridPos": {
         "x": 0,
         "y": 10,
@@ -957,7 +1083,7 @@
           ]
         }
       },
-      "id": 16,
+      "id": 18,
       "gridPos": {
         "x": 12,
         "y": 10,
@@ -1015,7 +1141,7 @@
           "sort": "desc"
         }
       },
-      "id": 17,
+      "id": 19,
       "gridPos": {
         "x": 0,
         "y": 18,
@@ -1130,7 +1256,7 @@
           "sort": "desc"
         }
       },
-      "id": 18,
+      "id": 20,
       "gridPos": {
         "x": 12,
         "y": 18,
@@ -1199,7 +1325,7 @@
           "sort": "desc"
         }
       },
-      "id": 19,
+      "id": 21,
       "gridPos": {
         "x": 0,
         "y": 26,
@@ -1277,7 +1403,7 @@
           "sort": "desc"
         }
       },
-      "id": 20,
+      "id": 22,
       "gridPos": {
         "x": 12,
         "y": 26,
@@ -1356,7 +1482,7 @@
           "sort": "desc"
         }
       },
-      "id": 21,
+      "id": 23,
       "gridPos": {
         "x": 0,
         "y": 34,
@@ -1424,7 +1550,7 @@
           "sort": "desc"
         }
       },
-      "id": 22,
+      "id": 24,
       "gridPos": {
         "x": 12,
         "y": 34,
@@ -1434,13 +1560,335 @@
     },
     {
       "type": "row",
-      "title": "Memory",
+      "title": "GPU",
       "collapsed": false,
       "panels": [],
-      "id": 23,
+      "id": 25,
       "gridPos": {
         "x": 0,
         "y": 42,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Engines busy",
+      "description": "Render/3D: graphics and compute (OpenVINO). Video / VideoEnhance: hardware decode, encode and scaling (Immich transcoding and thumbnails). Blitter: copies.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "intel_gpu_engine_busy_ratio{host_name=\"veronica\"}",
+          "legendFormat": "{{engine}}",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": 30000,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 26,
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU clock",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "intel_gpu_frequency_hertz{host_name=\"veronica\"}",
+          "legendFormat": "{{type}}",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "hertz",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": 30000,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 27,
+      "gridPos": {
+        "x": 12,
+        "y": 43,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Power (RAPL)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "intel_gpu_power_watts{host_name=\"veronica\"}",
+          "legendFormat": "{{domain}}",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": 30000,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 28,
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Asleep (RC6)",
+      "description": "Share of time the GPU was powered down. Near 100% when idle.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "intel_gpu_rc6_ratio{host_name=\"veronica\"}",
+          "legendFormat": "rc6",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": 30000,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 29,
+      "gridPos": {
+        "x": 8,
+        "y": 51,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "state-timeline",
+      "title": "Throttling",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "intel_gpu_throttle{host_name=\"veronica\"}",
+          "legendFormat": "{{reason}}",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "ok",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "throttled",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "rowHeight": 0.8,
+        "mergeValues": true
+      },
+      "id": 30,
+      "gridPos": {
+        "x": 16,
+        "y": 51,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "Memory",
+      "collapsed": false,
+      "panels": [],
+      "id": 31,
+      "gridPos": {
+        "x": 0,
+        "y": 59,
         "w": 24,
         "h": 1
       }
@@ -1516,10 +1964,10 @@
           "sort": "desc"
         }
       },
-      "id": 24,
+      "id": 32,
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 60,
         "w": 12,
         "h": 8
       }
@@ -1612,10 +2060,10 @@
           "sort": "desc"
         }
       },
-      "id": 25,
+      "id": 33,
       "gridPos": {
         "x": 12,
-        "y": 43,
+        "y": 60,
         "w": 12,
         "h": 8
       }
@@ -1625,10 +2073,10 @@
       "title": "Thermals and fans",
       "collapsed": false,
       "panels": [],
-      "id": 26,
+      "id": 34,
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 68,
         "w": 24,
         "h": 1
       }
@@ -1703,10 +2151,10 @@
           "sort": "desc"
         }
       },
-      "id": 27,
+      "id": 35,
       "gridPos": {
         "x": 0,
-        "y": 52,
+        "y": 69,
         "w": 12,
         "h": 9
       }
@@ -1762,10 +2210,10 @@
           "sort": "desc"
         }
       },
-      "id": 28,
+      "id": 36,
       "gridPos": {
         "x": 12,
-        "y": 52,
+        "y": 69,
         "w": 12,
         "h": 9
       }
@@ -1820,10 +2268,10 @@
           "sort": "desc"
         }
       },
-      "id": 29,
+      "id": 37,
       "gridPos": {
         "x": 0,
-        "y": 61,
+        "y": 78,
         "w": 24,
         "h": 7
       }
@@ -1833,10 +2281,10 @@
       "title": "Storage",
       "collapsed": false,
       "panels": [],
-      "id": 30,
+      "id": 38,
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 85,
         "w": 24,
         "h": 1
       }
@@ -1914,10 +2362,10 @@
           "sort": "desc"
         }
       },
-      "id": 31,
+      "id": 39,
       "gridPos": {
         "x": 0,
-        "y": 69,
+        "y": 86,
         "w": 8,
         "h": 8
       }
@@ -1995,10 +2443,10 @@
           "sort": "desc"
         }
       },
-      "id": 32,
+      "id": 40,
       "gridPos": {
         "x": 8,
-        "y": 69,
+        "y": 86,
         "w": 8,
         "h": 8
       }
@@ -2055,10 +2503,10 @@
           "sort": "desc"
         }
       },
-      "id": 33,
+      "id": 41,
       "gridPos": {
         "x": 16,
-        "y": 69,
+        "y": 86,
         "w": 8,
         "h": 8
       }
@@ -2126,10 +2574,10 @@
           ]
         }
       },
-      "id": 34,
+      "id": 42,
       "gridPos": {
         "x": 0,
-        "y": 77,
+        "y": 94,
         "w": 12,
         "h": 7
       }
@@ -2184,10 +2632,10 @@
         },
         "justifyMode": "center"
       },
-      "id": 35,
+      "id": 43,
       "gridPos": {
         "x": 12,
-        "y": 77,
+        "y": 94,
         "w": 12,
         "h": 7
       }
@@ -2197,10 +2645,10 @@
       "title": "Network",
       "collapsed": false,
       "panels": [],
-      "id": 36,
+      "id": 44,
       "gridPos": {
         "x": 0,
-        "y": 84,
+        "y": 101,
         "w": 24,
         "h": 1
       }
@@ -2298,10 +2746,10 @@
           "sort": "desc"
         }
       },
-      "id": 37,
+      "id": 45,
       "gridPos": {
         "x": 0,
-        "y": 85,
+        "y": 102,
         "w": 24,
         "h": 8
       }
@@ -2377,10 +2825,10 @@
           "sort": "desc"
         }
       },
-      "id": 38,
+      "id": 46,
       "gridPos": {
         "x": 0,
-        "y": 93,
+        "y": 110,
         "w": 24,
         "h": 6
       }
@@ -2390,10 +2838,10 @@
       "title": "System",
       "collapsed": false,
       "panels": [],
-      "id": 39,
+      "id": 47,
       "gridPos": {
         "x": 0,
-        "y": 99,
+        "y": 116,
         "w": 24,
         "h": 1
       }
@@ -2448,10 +2896,10 @@
           "sort": "desc"
         }
       },
-      "id": 40,
+      "id": 48,
       "gridPos": {
         "x": 0,
-        "y": 100,
+        "y": 117,
         "w": 12,
         "h": 8
       }
@@ -2511,10 +2959,10 @@
           ]
         }
       },
-      "id": 41,
+      "id": 49,
       "gridPos": {
         "x": 12,
-        "y": 100,
+        "y": 117,
         "w": 12,
         "h": 8
       }
@@ -2544,10 +2992,10 @@
         "sortOrder": "Descending",
         "enableLogDetails": true
       },
-      "id": 42,
+      "id": 50,
       "gridPos": {
         "x": 0,
-        "y": 108,
+        "y": 125,
         "w": 24,
         "h": 10
       }

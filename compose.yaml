@@ -129,6 +129,19 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
 
+  # Intel iGPU engines, clocks, power and throttling via intel_gpu_top (see intel-gpu-exporter/exporter.py).
+  # No published port; Alloy scrapes it on the compose network. The i915 PMU is a system-wide
+  # perf event, so it needs CAP_PERFMON and the render device, not full privileges.
+  intel-gpu-exporter:
+    <<: *restart
+    build: ./intel-gpu-exporter
+    image: homelab/intel-gpu-exporter
+    command: ["python", "-u", "/app/exporter.py"]
+    cap_add: [PERFMON]
+    devices: ["/dev/dri:/dev/dri"]
+    volumes:
+      - ./intel-gpu-exporter/exporter.py:/app/exporter.py:ro,z
+
   # Host network so interface/netstat metrics are the host's, not the container's.
   # Listens only on the compose bridge gateway, so Alloy can scrape it but the
   # LAN cannot (Fedora's default firewalld zone opens high ports).

@@ -132,6 +132,73 @@ prometheus.relabel "local" {
   forward_to = [prometheus.remote_write.prom.receiver]
 }
 
+// ------------------------------------------------------ OpenWrt router
+// node_exporter (Lua) on the router, served as CGI at /cgi-bin/metrics (see the router's install script).
+// OPENWRT_ADDR / OPENWRT_NAME in .env; if no router answers, its `up` series is simply 0.
+prometheus.scrape "openwrt" {
+  targets = [{
+    __address__ = coalesce(sys.env("OPENWRT_ADDR"), "192.168.1.1:9100"),
+    job         = "openwrt",
+    instance    = coalesce(sys.env("OPENWRT_NAME"), "router"),
+  }]
+  metrics_path    = "/cgi-bin/metrics"
+  scrape_interval = "15s"
+  scrape_timeout  = "10s"   // a full scrape takes ~1.5 s on a MIPS router
+  forward_to      = [prometheus.relabel.openwrt.receiver]
+}
+
+prometheus.relabel "openwrt" {
+  rule {
+    target_label = "host_name"
+    replacement  = coalesce(sys.env("OPENWRT_NAME"), "router")
+  }
+  rule {
+    target_label = "deployment_environment"
+    replacement  = "homelab"
+  }
+  forward_to = [prometheus.remote_write.prom.receiver]
+}
+
+// The router's syslog (logd: kernel, dnsmasq, hostapd, firewall, tailscaled, ...) over UDP.
+// On the router: uci set system.@system[0].log_ip=<this host> log_port=5514 log_proto=udp
+loki.source.syslog "openwrt" {
+  listener {
+    address       = "0.0.0.0:5514"
+    protocol      = "udp"
+    syslog_format = "rfc3164"
+    labels        = { source = "syslog" }
+  }
+  relabel_rules = loki.relabel.syslog.rules
+  forward_to    = [loki.write.local.receiver]
+}
+
+loki.relabel "syslog" {
+  forward_to = []
+  rule {
+    target_label = "host_name"
+    replacement  = coalesce(sys.env("OPENWRT_NAME"), "router")
+  }
+  rule {
+    target_label = "deployment_environment"
+    replacement  = "homelab"
+  }
+  rule {
+    source_labels = ["__syslog_message_app_name"]
+    target_label  = "service_name"
+  }
+  rule {
+    source_labels = ["__syslog_message_severity"]
+    regex         = "(emergency|alert|critical|error)"
+    replacement   = "error"
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__syslog_message_severity"]
+    regex         = "(warning|notice|informational|debug)"
+    target_label  = "level"
+  }
+}
+
 // ------------------------------------------------------ local journald
 // Covers system units, user units (claude-rc) and podman/docker containers
 // that log to journald (CONTAINER_NAME).

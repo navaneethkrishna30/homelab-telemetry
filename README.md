@@ -56,6 +56,11 @@ Telemetry comes from three places:
 - **`immich-exporter`** polls the Immich API at `IMMICH_URL` (default `http://172.30.0.1:2283`, the compose bridge
   gateway). Liveness and latency always work. Library, disk and job-queue metrics need an admin API key: create one in
   Immich (Account Settings → API Keys), set `IMMICH_API_KEY` in `.env`, then `docker compose up -d immich-exporter`.
+- **Database size** (`immich_database_size_bytes`): the exporter reads `pg_database_size` from `immich_postgres` over
+  the `immich` Docker network as a read-only `pg_monitor` role. With `pg_read_all_data` as well, it also publishes a
+  precomputed library history every 15 min (`immich_library_*`: assets and bytes by year taken, uploads per day);
+  set `LIBRARY_TZ` for the day boundaries. Create the role (see `.env.example`), set
+  `IMMICH_DB_PASSWORD` in `.env`, then `docker compose up -d --build immich-exporter`.
 - **Immich's own `/metrics`** (Prometheus job `immich-native`) needs two changes to the Immich server container:
   `IMMICH_TELEMETRY_INCLUDE=all` in its environment, and ports 8081 (API) and 8082 (microservices) published on the
   compose bridge gateway:

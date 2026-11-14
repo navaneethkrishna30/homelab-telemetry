@@ -10,6 +10,9 @@ networks:
       config:
         - subnet: 172.30.0.0/24
           gateway: 172.30.0.1
+  # Immich's own network (apps project), joined only by immich-exporter to reach Postgres.
+  immich:
+    external: true
 
 x-restart: &restart
   restart: unless-stopped
@@ -118,15 +121,20 @@ services:
 
   # Immich (Docker, port 2283 on the host). Polls its HTTP API; no published
   # port, Prometheus scrapes it on the compose network. IMMICH_API_KEY is optional: without it only
-  # liveness and latency are exported.
+  # liveness and latency are exported. IMMICH_DB_PASSWORD (read-only pg_monitor role) adds the
+  # database size, read from immich_postgres over the `immich` network.
   immich-exporter:
     <<: *restart
-    image: python:3.13-alpine
+    build: ./immich-exporter
+    image: homelab/immich-exporter
     command: ["python", "-u", "/app/exporter.py"]
     environment:
       IMMICH_URL: ${IMMICH_URL:-http://172.30.0.1:2283}
       IMMICH_API_KEY: ${IMMICH_API_KEY:-}
+      IMMICH_DB_PASSWORD: ${IMMICH_DB_PASSWORD:-}
+      LIBRARY_TZ: ${LIBRARY_TZ:-UTC}
       HOST_NAME: ${HOST_NAME:-localhost}
+    networks: [default, immich]
     volumes:
       - ./immich-exporter/exporter.py:/app/exporter.py:ro,z
     depends_on:

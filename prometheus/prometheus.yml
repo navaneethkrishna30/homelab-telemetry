@@ -25,6 +25,8 @@ scrape_configs:
         labels: {service: alloy}
       - targets: ["grafana:3000"]
         labels: {service: grafana}
+      - targets: ["alertmanager:9093"]
+        labels: {service: alertmanager}
   # Immich, via immich-exporter (API polling; see immich-exporter/exporter.py).
   - job_name: immich
     static_configs:

@@ -4,6 +4,9 @@
 #
 # Alertmanager (alertmanager/alertmanager.yml) sends them to the phone through ntfy. `severity` is
 # warning (look today) or critical (look now, repeated every 4 hours).
+#
+# Every rule carries two more annotations for the hub's Alerts page, which lists the rules: `watches` (what it
+# looks at) and `threshold` (when it trips, in words; the page adds the `for:` time itself).
 
 groups:
   - name: storage
@@ -13,18 +16,24 @@ groups:
         for: 15m
         labels: {severity: warning}
         annotations:
+          watches: "How full veronica's disk is"
+          threshold: "80% full"
           summary: "veronica's disk is {{ $value | humanizePercentage }} full"
       - alert: DiskAlmostFull
         expr: host:root_fs_usage:ratio{host_name="veronica"} >= 0.90
         for: 15m
         labels: {severity: critical}
         annotations:
+          watches: "How full veronica's disk is"
+          threshold: "90% full"
           summary: "veronica's disk is {{ $value | humanizePercentage }} full"
       # Any btrfs read/write/corruption error on the only copy of the live data.
       - alert: BtrfsDeviceErrors
         expr: node_btrfs_device_errors_total{host_name="veronica"} > 0
         labels: {severity: critical}
         annotations:
+          watches: "btrfs read, write and corruption error counters on veronica's disk"
+          threshold: "any error"
           summary: "btrfs reports {{ $labels.type }} errors on {{ $labels.device }}"
 
   - name: backup
@@ -34,23 +43,31 @@ groups:
         for: 10m
         labels: {severity: critical}
         annotations:
+          watches: "The result of the last nightly backup run: every job and every copy"
+          threshold: "the run failed"
           summary: "The last backup run failed: a job or a copy (see /var/log/homelab-backup.log)"
       # The run starts at 04:00 and takes minutes; 26 h leaves room for a slow night.
       - alert: BackupMissed
         expr: time() - immich_backup_last_success_timestamp_seconds > 26 * 3600
         labels: {severity: warning}
         annotations:
+          watches: "Time since the last successful backup run"
+          threshold: "26 hours"
           summary: "No successful backup for {{ $value | humanizeDuration }}"
       - alert: BackupMissedTwice
         expr: time() - immich_backup_last_success_timestamp_seconds > 50 * 3600
         labels: {severity: critical}
         annotations:
+          watches: "Time since the last successful backup run"
+          threshold: "50 hours"
           summary: "No successful backup for {{ $value | humanizeDuration }}"
       - alert: BackupTimerDisabled
         expr: immich_backup_timer_enabled == 0
         for: 1h
         labels: {severity: warning}
         annotations:
+          watches: "Whether the nightly homelab-backup timer is enabled"
+          threshold: "disabled"
           summary: "The nightly homelab-backup timer is disabled"
       # The status script runs every 5 min; without it every backup alert above goes blind.
       - alert: BackupStatusStale
@@ -58,6 +75,8 @@ groups:
         for: 10m
         labels: {severity: warning}
         annotations:
+          watches: "The backup-status script, which feeds every backup alert"
+          threshold: "no report for 20 minutes"
           summary: "backup-status has stopped reporting"
 
   - name: services
@@ -67,18 +86,24 @@ groups:
         for: 5m
         labels: {severity: critical}
         annotations:
+          watches: "Whether Immich answers"
+          threshold: "not answering"
           summary: "Immich is not answering"
       - alert: ScrapeTargetDown
         expr: up{job=~"telemetry-stack|immich|immich-native"} == 0
         for: 5m
         labels: {severity: warning}
         annotations:
+          watches: "Prometheus's scrapes of the telemetry stack and Immich"
+          threshold: "a target is down"
           summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
       - alert: SystemdUnitFailed
         expr: node_systemd_unit_state{state="failed", host_name="veronica"} == 1
         for: 10m
         labels: {severity: warning}
         annotations:
+          watches: "Every systemd unit on veronica"
+          threshold: "a unit has failed"
           summary: "{{ $labels.name }} has failed on veronica"
 
   - name: hosts
@@ -88,22 +113,30 @@ groups:
         for: 5m
         labels: {severity: critical}
         annotations:
+          watches: "Whether Heimdall is still sending metrics"
+          threshold: "no metrics"
           summary: "Heimdall has stopped reporting"
       - alert: InternetDown
         expr: max(heimdall_ping_up{target!="gateway"}) == 0
         for: 3m
         labels: {severity: critical}
         annotations:
+          watches: "Heimdall's pings to the internet"
+          threshold: "none answered"
           summary: "Heimdall can't reach the internet"
       - alert: MemoryPressure
         expr: host:memory_usage:ratio{host_name="veronica"} >= 0.95
         for: 15m
         labels: {severity: warning}
         annotations:
+          watches: "veronica's memory use"
+          threshold: "95% used"
           summary: "veronica's memory is {{ $value | humanizePercentage }} used"
       - alert: CpuHot
         expr: host:cpu_temp_celsius{host_name="veronica"} >= 85
         for: 10m
         labels: {severity: warning}
         annotations:
+          watches: "veronica's CPU temperature"
+          threshold: "85 °C"
           summary: "veronica's CPU is at {{ $value }} °C"

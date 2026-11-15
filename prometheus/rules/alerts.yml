@@ -2,8 +2,8 @@
 # they are left out on purpose. Thresholds mirror homelab-fe's status rules (api/app/rules.py in the
 # homelab repo) so the web UI and the alerts agree; change both together.
 #
-# No Alertmanager is wired yet: firing alerts show on Prometheus' /alerts page and as the ALERTS
-# series. `severity` is warning (look today) or critical (look now).
+# Alertmanager (alertmanager/alertmanager.yml) sends them to the phone through ntfy. `severity` is
+# warning (look today) or critical (look now, repeated every 4 hours).
 
 groups:
   - name: storage
@@ -34,31 +34,31 @@ groups:
         for: 10m
         labels: {severity: critical}
         annotations:
-          summary: "The last Immich backup run failed (see /var/log/immich-backup.log)"
+          summary: "The last backup run failed: a job or a copy (see /var/log/homelab-backup.log)"
       # The run starts at 04:00 and takes minutes; 26 h leaves room for a slow night.
       - alert: BackupMissed
         expr: time() - immich_backup_last_success_timestamp_seconds > 26 * 3600
         labels: {severity: warning}
         annotations:
-          summary: "No successful Immich backup for {{ $value | humanizeDuration }}"
+          summary: "No successful backup for {{ $value | humanizeDuration }}"
       - alert: BackupMissedTwice
         expr: time() - immich_backup_last_success_timestamp_seconds > 50 * 3600
         labels: {severity: critical}
         annotations:
-          summary: "No successful Immich backup for {{ $value | humanizeDuration }}"
+          summary: "No successful backup for {{ $value | humanizeDuration }}"
       - alert: BackupTimerDisabled
         expr: immich_backup_timer_enabled == 0
         for: 1h
         labels: {severity: warning}
         annotations:
-          summary: "The nightly immich-backup timer is disabled"
+          summary: "The nightly homelab-backup timer is disabled"
       # The status script runs every 5 min; without it every backup alert above goes blind.
       - alert: BackupStatusStale
         expr: (time() - immich_backup_status_timestamp_seconds > 20 * 60) or absent(immich_backup_status_timestamp_seconds)
         for: 10m
         labels: {severity: warning}
         annotations:
-          summary: "immich-backup-status has stopped reporting"
+          summary: "backup-status has stopped reporting"
 
   - name: services
     rules:

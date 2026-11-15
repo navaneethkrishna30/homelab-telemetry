@@ -1,0 +1,17 @@
+# Every alert goes to one place: the ntfy topic in NTFY_URL (.env). One notification per alert name; a critical
+# alert repeats every 4 hours while it fires, a warning once a day.
+route:
+  receiver: ntfy
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 24h
+  routes:
+    - matchers: [severity="critical"]
+      repeat_interval: 4h
+
+receivers:
+  - name: ntfy
+    webhook_configs:
+      - url_file: /tmp/ntfy-url
+        send_resolved: true

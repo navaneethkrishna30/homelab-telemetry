@@ -77,6 +77,20 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
 
+  # Sends firing alerts (prometheus/rules/alerts.yml) to the phone through ntfy. NTFY_URL is the full topic URL
+  # with ntfy's message template in its query string; it is a secret, so it reaches the config as a file.
+  alertmanager:
+    <<: *restart
+    image: prom/alertmanager:v0.28.1
+    environment:
+      NTFY_URL: ${NTFY_URL:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'printf %s "$$NTFY_URL" > /tmp/ntfy-url && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/tmp/alertmanager'
+    ports: ["127.0.0.1:9093:9093"]
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro,z
+
   loki:
     <<: *restart
     image: grafana/loki:3.5.0
@@ -174,5 +188,5 @@ services:
       - --collector.textfile.directory=/var/lib/node-textfile
     volumes:
       - /:/host:ro,rslave
-      - ./data/textfile:/var/lib/node-textfile:ro,z   # immich-backup status, written by ~/claude/immich-backup
+      - ./data/textfile:/var/lib/node-textfile:ro,z   # backup status, written by backup/backup-status.py in the homelab repo
     security_opt: ["label=disable"]

@@ -90,8 +90,13 @@ show `n/a` until `IMMICH_API_KEY` is set. Gotchas:
   today's bar.
 
 ## Not included yet
-Alert delivery (`prometheus/rules/alerts.yml` fires on Prometheus' `/alerts` page, no Alertmanager yet) and
-long-term storage (retention is 45 days everywhere).
+Long-term storage (retention is 45 days everywhere).
+
+## Alerts
+`prometheus/rules/alerts.yml` holds the rules; Alertmanager posts each firing or resolved alert to `NTFY_URL`
+(`.env`), an [ntfy](https://ntfy.sh) topic the phone subscribes to. The URL carries ntfy's inline template, so the
+notification is the alert name plus its `summary`. Test it: `docker compose exec alertmanager amtool alert add Test
+severity=warning --annotation=summary="hello" --alertmanager.url=http://localhost:9093`.
 
 ## Layout
 ```

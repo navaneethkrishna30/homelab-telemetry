@@ -90,7 +90,8 @@ show `n/a` until `IMMICH_API_KEY` is set. Gotchas:
   today's bar.
 
 ## Not included yet
-Alert and recording rules, and long-term storage (retention is 45 days everywhere).
+Alert delivery (`prometheus/rules/alerts.yml` fires on Prometheus' `/alerts` page, no Alertmanager yet) and
+long-term storage (retention is 45 days everywhere).
 
 ## Layout
 ```

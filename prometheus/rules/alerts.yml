@@ -1,0 +1,109 @@
+# Alerts for the always-on machines (the server and the router). Laptops and the gaming PC sleep, so
+# they are left out on purpose. Thresholds mirror homelab-fe's status rules (api/app/rules.py in the
+# homelab repo) so the web UI and the alerts agree; change both together.
+#
+# No Alertmanager is wired yet: firing alerts show on Prometheus' /alerts page and as the ALERTS
+# series. `severity` is warning (look today) or critical (look now).
+
+groups:
+  - name: storage
+    rules:
+      - alert: DiskFilling
+        expr: host:root_fs_usage:ratio{host_name="veronica"} >= 0.80
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "veronica's disk is {{ $value | humanizePercentage }} full"
+      - alert: DiskAlmostFull
+        expr: host:root_fs_usage:ratio{host_name="veronica"} >= 0.90
+        for: 15m
+        labels: {severity: critical}
+        annotations:
+          summary: "veronica's disk is {{ $value | humanizePercentage }} full"
+      # Any btrfs read/write/corruption error on the only copy of the live data.
+      - alert: BtrfsDeviceErrors
+        expr: node_btrfs_device_errors_total{host_name="veronica"} > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "btrfs reports {{ $labels.type }} errors on {{ $labels.device }}"
+
+  - name: backup
+    rules:
+      - alert: BackupFailed
+        expr: immich_backup_last_result == 0
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: "The last Immich backup run failed (see /var/log/immich-backup.log)"
+      # The run starts at 04:00 and takes minutes; 26 h leaves room for a slow night.
+      - alert: BackupMissed
+        expr: time() - immich_backup_last_success_timestamp_seconds > 26 * 3600
+        labels: {severity: warning}
+        annotations:
+          summary: "No successful Immich backup for {{ $value | humanizeDuration }}"
+      - alert: BackupMissedTwice
+        expr: time() - immich_backup_last_success_timestamp_seconds > 50 * 3600
+        labels: {severity: critical}
+        annotations:
+          summary: "No successful Immich backup for {{ $value | humanizeDuration }}"
+      - alert: BackupTimerDisabled
+        expr: immich_backup_timer_enabled == 0
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "The nightly immich-backup timer is disabled"
+      # The status script runs every 5 min; without it every backup alert above goes blind.
+      - alert: BackupStatusStale
+        expr: (time() - immich_backup_status_timestamp_seconds > 20 * 60) or absent(immich_backup_status_timestamp_seconds)
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "immich-backup-status has stopped reporting"
+
+  - name: services
+    rules:
+      - alert: ImmichDown
+        expr: immich_up < 1 or absent(immich_up)
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Immich is not answering"
+      - alert: ScrapeTargetDown
+        expr: up{job=~"telemetry-stack|immich|immich-native"} == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
+      - alert: SystemdUnitFailed
+        expr: node_systemd_unit_state{state="failed", host_name="veronica"} == 1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.name }} has failed on veronica"
+
+  - name: hosts
+    rules:
+      - alert: RouterDown
+        expr: host:online{host_name="heimdall"} == 0 or absent(host:online{host_name="heimdall"})
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Heimdall has stopped reporting"
+      - alert: InternetDown
+        expr: max(heimdall_ping_up{target!="gateway"}) == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "Heimdall can't reach the internet"
+      - alert: MemoryPressure
+        expr: host:memory_usage:ratio{host_name="veronica"} >= 0.95
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "veronica's memory is {{ $value | humanizePercentage }} used"
+      - alert: CpuHot
+        expr: host:cpu_temp_celsius{host_name="veronica"} >= 85
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "veronica's CPU is at {{ $value }} °C"

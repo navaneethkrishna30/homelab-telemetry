@@ -120,6 +120,19 @@ prometheus.scrape "igpu" {
   forward_to      = [prometheus.relabel.local.receiver]
 }
 
+// Jarvis API (homelab repo, jarvis/api): speech usage, credits and cost per vendor account. It runs on the host
+// network and serves only /metrics on the bridge gateway, like node_exporter.
+prometheus.scrape "jarvis_api" {
+  targets = [{
+    __address__ = "172.30.0.1:9108",
+    job         = "jarvis-api",
+    instance    = sys.env("HOST_NAME"),
+  }]
+  scrape_interval = "15s"
+  scrape_timeout  = "10s"
+  forward_to      = [prometheus.relabel.local.receiver]
+}
+
 prometheus.relabel "local" {
   rule {
     target_label = "host_name"

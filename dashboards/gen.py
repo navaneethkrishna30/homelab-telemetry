@@ -717,9 +717,58 @@ def jarvis():
     d.add(timeseries("Tokens", [
         prom(f"sum by (kind)(increase(jarvis_tokens_total{J}[$__interval]))", legend="{{kind}}"),
     ], bars=True, stack=True, interval="15m", ds=PROM,
-        desc="in: sent to the model (cached is the part billed at the cache price). out: what it wrote."), 8, 8)
-    d.add(text("Single turns", "Each turn is a trace: **Explore → Tempo → Search → Service name `jarvis`**. The span "
-               "`turn` carries the question; under it one span per model call and per tool call. On the server, "
+        desc="in: sent to the model (cached is the part billed at the cache price, cache_write the part written "
+             "to it). out: what it wrote, reasoning included (reasoning: the thinking part)."), 8, 8)
+
+    d.row("What it costs and does")
+    d.add(stat("Model cost", f"sum(increase(jarvis_cost_usd_total{J}[$__range]))", unit="currencyUSD", decimals=3,
+               prom_q=True, desc="Estimated by Hermes's own price table for each model call."), 6, 4)
+    d.add(stat("Reasoning tokens", f'sum(increase(jarvis_tokens_total{{service_name="jarvis",kind="reasoning"}}'
+               f'[$__range]))', decimals=0, prom_q=True), 6, 4)
+    d.add(stat("Failed turns", f'sum(increase(jarvis_turns_total{{service_name="jarvis",outcome!="ok"}}[$__range]))',
+               decimals=0, color="red", prom_q=True), 6, 4)
+    d.add(stat("Failed model requests", f"sum(increase(jarvis_llm_errors_total{J}[$__range]))", decimals=0,
+               color="red", prom_q=True), 6, 4)
+    d.add(timeseries("Model cost by mode", [
+        prom(f"sum by (mode)(increase(jarvis_cost_usd_total{J}[$__interval]))", legend="{{mode}}"),
+    ], unit="currencyUSD", bars=True, stack=True, interval="1h", ds=PROM,
+        desc="mode: chat or voice on the hub, home-assistant, else Hermes's platform."), 12, 8)
+    d.add(timeseries("Tool calls by status", [
+        prom(f"sum by (tool, status)(increase(jarvis_tool_calls_total{J}[$__interval]))", legend="{{tool}} {{status}}"),
+    ], bars=True, stack=True, interval="1h", ds=PROM), 12, 8)
+
+    S = '{job="jarvis-api"}'
+    d.row("Speech vendors (Jarvis API)")
+    d.add(timeseries("Credits this month, against the free tier", [
+        prom(f"jarvis_speech_month_credits{S}", legend="{{account}} used", ref="A"),
+        prom(f"jarvis_speech_month_credits_projected{S}", legend="{{account}} by month end", ref="B"),
+        prom(f"jarvis_speech_month_credits_limit{S}", legend="{{account}} free tier", ref="C"),
+    ], ds=PROM, legend=("lastNotNull",),
+        desc="Calendar month, UTC. The projection runs this month's pace to its end. An alert fires at 80% of a "
+             "free tier and when an account is exhausted."), 12, 8)
+    d.add(timeseries("This month at paid rates", [
+        prom(f"jarvis_speech_month_paid_usd{S}", legend="{{account}} now", ref="A"),
+        prom(f"jarvis_speech_month_paid_usd_projected{S}", legend="{{account}} by month end", ref="B"),
+    ], unit="currencyUSD", ds=PROM, legend=("lastNotNull",),
+        desc="Prices in the Jarvis API's config (SPEECH_PRICES): Cartesia Pro, Deepgram per use."), 12, 8)
+    d.add(timeseries("Requests by account and outcome", [
+        prom(f"sum by (account, kind, outcome)(increase(jarvis_speech_requests_total{S}[$__interval]))",
+             legend="{{account}} {{kind}} {{outcome}}"),
+    ], bars=True, stack=True, interval="1h", ds=PROM,
+        desc="Anything but ok made the request fall over to the next account."), 12, 8)
+    d.add(timeseries("Speech latency (p50 / p95)", [
+        prom(f"histogram_quantile(0.5, sum by (le, account, kind)(increase(jarvis_speech_latency_seconds_bucket{S}"
+             f"[$__interval])))", legend="{{account}} {{kind}} p50", ref="A"),
+        prom(f"histogram_quantile(0.95, sum by (le, account, kind)(increase(jarvis_speech_latency_seconds_bucket{S}"
+             f"[$__interval])))", legend="{{account}} {{kind}} p95", ref="B"),
+    ], unit="s", interval="1h", ds=PROM, legend=("mean", "max"),
+        desc="To the transcript (stt) or the first audio (tts)."), 12, 8)
+
+    d.add(text("Single turns and requests", "Each turn is a trace: **Explore → Tempo → Search → Service name "
+               "`jarvis`**. The span `turn` carries the question, instructions and answer; under it one span per "
+               "model call (tokens, cost, reasoning) and per tool call (arguments, result). The whole record is a "
+               "Loki line: `{service_name=\"jarvis\"} | json`. Speech requests: "
+               "`{service_name=\"jarvis-api\"} | event=\"speech_request\"`. On the server, "
                "`~/homelab/jarvis/timing.py` prints the last turns and `~/homelab/jarvis/bench.py` times speech "
                "to text, the answer and text to speech."), 24, 3)
     return d.build()

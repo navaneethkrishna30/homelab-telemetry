@@ -140,3 +140,24 @@ groups:
           watches: "veronica's CPU temperature"
           threshold: "85 °C"
           summary: "veronica's CPU is at {{ $value }} °C"
+
+  # Jarvis's hosted speech vendors (metrics from the Jarvis API in the homelab repo, jarvis/api/app/observe.py).
+  # Per account, so a second account of the same vendor alerts on its own.
+  - name: jarvis
+    rules:
+      - alert: SpeechFreeTierNearlyUsed
+        expr: jarvis_speech_month_credits / jarvis_speech_month_credits_limit >= 0.80
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          watches: "Each speech account's credits this month against its free tier"
+          threshold: "80% of the free tier used"
+          summary: "Speech account {{ $labels.account }} has used {{ $value | humanizePercentage }} of its free credits this month"
+      - alert: SpeechAccountExhausted
+        expr: jarvis_speech_account_exhausted == 1
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          watches: "Whether a speech account was refused for credits, quota or its key"
+          threshold: "an account is exhausted"
+          summary: "Speech account {{ $labels.account }} is out of credits, quota or key; Jarvis moved on to the next one until the month ends or the key changes"

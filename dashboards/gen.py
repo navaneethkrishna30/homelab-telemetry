@@ -672,8 +672,62 @@ def immich():
     return d.build()
 
 
+def jarvis():
+    # Jarvis (Hermes Agent on the server). Metrics and traces come from its jarvis-telemetry plugin over OTLP;
+    # one "turn" is one question and its answer. Speech-to-text and text-to-speech are outside these numbers.
+    d = Dash("jarvis", "Jarvis", [], "now-24h", ["jarvis"])
+    J = '{service_name="jarvis"}'
+
+    def q(quantile, metric, by=""):
+        group = f"le, {by}" if by else "le"
+        return f"histogram_quantile({quantile}, sum by ({group})(increase({metric}_bucket{J}[$__range])))"
+
+    d.row("How fast (whole time range)")
+    d.add(stat("Turns", f"sum(increase(jarvis_turn_seconds_count{J}[$__range]))", prom_q=True, decimals=0,
+               desc="Questions answered."), 4, 4)
+    d.add(stat("Median turn", q(0.5, "jarvis_turn_seconds"), unit="s", decimals=1, prom_q=True,
+               desc="Half of the answers took less than this, from the text arriving to the reply being ready."), 4, 4)
+    d.add(stat("Slow turn (p95)", q(0.95, "jarvis_turn_seconds"), unit="s", decimals=1, color="orange", prom_q=True,
+               desc="One answer in twenty took longer than this."), 4, 4)
+    d.add(stat("Model calls per turn", f"sum(increase(jarvis_turn_llm_calls_sum{J}[$__range]))"
+               f" / sum(increase(jarvis_turn_llm_calls_count{J}[$__range]))", decimals=1, prom_q=True,
+               desc="Each call is about a second. One is the floor; more means tools were used."), 4, 4)
+    d.add(stat("Median model call", q(0.5, "jarvis_llm_call_seconds"), unit="s", decimals=2, prom_q=True), 4, 4)
+    d.add(stat("Output tokens", f'sum(increase(jarvis_tokens_total{{service_name="jarvis",kind="out"}}[$__range]))',
+               decimals=0, prom_q=True, desc="Long answers show up here."), 4, 4)
+
+    d.row("Where the time goes")
+    d.add(timeseries("Time by stage", [
+        prom(f"sum by (stage)(increase(jarvis_turn_stage_seconds_total{J}[$__interval]))", legend="{{stage}}"),
+    ], unit="s", bars=True, stack=True, interval="5m", ds=PROM,
+        desc="llm: waiting for the model. tools: commands and searches. hermes: everything else in the gateway."), 12, 8)
+    d.add(timeseries("Turn time (p50 / p95)", [
+        prom(f"histogram_quantile(0.5, sum by (le)(increase(jarvis_turn_seconds_bucket{J}[$__interval])))",
+             legend="p50", ref="A"),
+        prom(f"histogram_quantile(0.95, sum by (le)(increase(jarvis_turn_seconds_bucket{J}[$__interval])))",
+             legend="p95", ref="B"),
+    ], unit="s", interval="15m", ds=PROM, legend=("mean", "max")), 12, 8)
+    d.add(timeseries("Model call time by model (p50)", [
+        prom(f"histogram_quantile(0.5, sum by (le, model)(increase(jarvis_llm_call_seconds_bucket{J}[$__interval])))",
+             legend="{{model}}"),
+    ], unit="s", interval="15m", ds=PROM, legend=("mean", "max")), 8, 8)
+    d.add(timeseries("Tool time by tool", [
+        prom(f"sum by (tool)(increase(jarvis_tool_call_seconds_sum{J}[$__interval]))", legend="{{tool}}"),
+    ], unit="s", bars=True, stack=True, interval="15m", ds=PROM), 8, 8)
+    d.add(timeseries("Tokens", [
+        prom(f"sum by (kind)(increase(jarvis_tokens_total{J}[$__interval]))", legend="{{kind}}"),
+    ], bars=True, stack=True, interval="15m", ds=PROM,
+        desc="in: sent to the model (cached is the part billed at the cache price). out: what it wrote."), 8, 8)
+    d.add(text("Single turns", "Each turn is a trace: **Explore → Tempo → Search → Service name `jarvis`**. The span "
+               "`turn` carries the question; under it one span per model call and per tool call. On the server, "
+               "`~/homelab/jarvis/timing.py` prints the last turns and `~/homelab/jarvis/bench.py` times speech "
+               "to text, the answer and text to speech."), 24, 3)
+    return d.build()
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, dash in (("claude-overview", overview()), ("claude-session", session()), ("immich-overview", immich())):
+    for name, dash in (("claude-overview", overview()), ("claude-session", session()), ("immich-overview", immich()),
+                       ("jarvis", jarvis())):
         (OUT / f"{name}.json").write_text(json.dumps(dash, indent=1))
         print("wrote", OUT / f"{name}.json")

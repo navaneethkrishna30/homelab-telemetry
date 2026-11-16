@@ -15,7 +15,7 @@ networks:
     external: true
 
 x-restart: &restart
-  restart: unless-stopped
+  restart: always   # comes back after every reboot, even if it was stopped by hand before it
 
 services:
   # One-shot: give each service's uid ownership of its bind-mounted data dir.

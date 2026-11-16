@@ -105,6 +105,25 @@ groups:
           watches: "Every systemd unit on veronica"
           threshold: "a unit has failed"
           summary: "{{ $labels.name }} has failed on veronica"
+      # homelab_service_up comes from boot-check in the homelab repo (every 2 min): each container with a restart
+      # policy and each key unit. It restarts what a reboot left down in the first 10 minutes, so this fires only
+      # for something it could not bring back, or that went down later. Prometheus being down it reports itself.
+      - alert: ServiceDown
+        expr: homelab_service_up{host_name="veronica"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          watches: "Every container and key service on veronica, checked every 2 minutes"
+          threshold: "one is down"
+          summary: "{{ $labels.name }} is down on veronica"
+      - alert: ServiceCheckStale
+        expr: time() - homelab_service_check_timestamp_seconds{host_name="veronica"} > 900 or absent(homelab_service_check_timestamp_seconds{host_name="veronica"})
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          watches: "Whether veronica's service check (boot-check timer) still runs"
+          threshold: "no check for 15 minutes"
+          summary: "veronica's service check has not run for 15 minutes"
 
   - name: hosts
     rules:

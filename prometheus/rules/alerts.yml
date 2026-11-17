@@ -180,3 +180,12 @@ groups:
           watches: "Whether a speech account was refused for credits, quota or its key"
           threshold: "an account is exhausted"
           summary: "Speech account {{ $labels.account }} is out of credits, quota or key; Jarvis moved on to the next one until the month ends or the key changes"
+      # Alerts reach the phone through the Jarvis API, so its own death goes to ntfy instead (alertmanager.yml).
+      - alert: JarvisDown
+        expr: up{job="jarvis-api"} == 0 or absent(up{job="jarvis-api"})
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          watches: "Prometheus's scrape of the Jarvis API, which delivers every other alert"
+          threshold: "not answering"
+          summary: "The Jarvis API is down: alerts can't reach the Jarvis app"

@@ -1,17 +1,33 @@
-# Every alert goes to the phone: the ntfy topic in NTFY_URL (.env). The same notification is also posted to the
-# hub (homelab-fe), which keeps it as the Alerts page's notification history; the phone doesn't depend on it. One notification per alert name; a critical
-# alert repeats every 4 hours while it fires, a warning once a day.
+# Every alert goes to Jarvis (the homelab repo's jarvis/api/app/alerts.py): a notice in the Jarvis app on the phone,
+# urgent for critical alerts, so the details stay on veronica. Jarvis falls back to ntfy with a generic line when the
+# phone app can't hear it. Only the alert that Jarvis itself is down goes to the ntfy topic in NTFY_URL (.env).
+# Each notification is also posted to the hub (homelab-fe), which keeps it as the Alerts page's history. A critical
+# alert repeats every 4 hours while it fires, a warning once a day (Jarvis tells Nav once per group either way).
 route:
-  receiver: ntfy
+  receiver: jarvis
   group_by: [alertname]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 24h
   routes:
+    - matchers: [alertname="JarvisDown"]
+      receiver: ntfy
+      repeat_interval: 4h
     - matchers: [severity="critical"]
       repeat_interval: 4h
 
 receivers:
+  - name: jarvis
+    webhook_configs:
+      - url: http://172.30.0.1:9109/alerts      # the Jarvis API's webhook listener, on this network's gateway
+        send_resolved: true
+        http_config:
+          authorization: {credentials_file: /tmp/jarvis-key}
+      - url: http://homelab-fe-web-1:8000/api/alerts/notified
+        send_resolved: true
+        http_config:
+          http_headers:
+            X-Family-Share: {values: ["1"]}   # the hub refuses writes without it
   - name: ntfy
     webhook_configs:
       - url_file: /tmp/ntfy-url

@@ -13,6 +13,9 @@ networks:
   # Immich's own network (apps project), joined only by immich-exporter to reach Postgres.
   immich:
     external: true
+  # homelab-common's bridge: services send OTLP to alloy:4318 over it (deploy.sh preflight creates it).
+  homelab:
+    external: true
 
 x-restart: &restart
   restart: always   # comes back after every reboot, even if it was stopped by hand before it
@@ -39,6 +42,7 @@ services:
       OPENWRT_ADDR: ${OPENWRT_ADDR:-}      # router node_exporter, host:port (optional)
       OPENWRT_NAME: ${OPENWRT_NAME:-}      # host_name label for the router
     security_opt: ["label=disable"]  # SELinux: allow reading host journal
+    networks: [default, homelab]
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345

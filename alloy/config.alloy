@@ -62,15 +62,34 @@ otelcol.processor.deltatocumulative "default" {
 
 otelcol.processor.batch "default" {
   output {
-    metrics = [otelcol.exporter.prometheus.default.input]
+    metrics = [otelcol.processor.transform.labels.input]
     logs    = [otelcol.exporter.otlphttp.loki.input]
     traces  = [otelcol.exporter.otlp.tempo.input]
   }
 }
 
+// Only three resource attributes become metric labels (homelab-common SPEC section 8): copied onto every data point
+// here, because the exporter below no longer converts resource attributes. Other resource attributes stay on
+// traces and logs. (The exporter still derives job and instance from service.name / service.instance.id.)
+otelcol.processor.transform "labels" {
+  error_mode = "ignore"
+  metric_statements {
+    context    = "datapoint"
+    statements = [
+      `set(attributes["host.name"], resource.attributes["host.name"])`,
+      `set(attributes["deployment.environment"], resource.attributes["deployment.environment"])`,
+      `set(attributes["service.name"], resource.attributes["service.name"])`,
+    ]
+  }
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+  }
+}
+
 // ------------------------------------------------------------ backends out
 otelcol.exporter.prometheus "default" {
-  resource_to_telemetry_conversion = true
+  resource_to_telemetry_conversion = false
+  include_scope_labels             = false
   forward_to                       = [prometheus.remote_write.prom.receiver]
 }
 

@@ -737,78 +737,11 @@ def jarvis():
         prom(f"sum by (tool, status)(increase(jarvis_tool_calls_total{J}[$__interval]))", legend="{{tool}} {{status}}"),
     ], bars=True, stack=True, interval="1h", ds=PROM), 12, 8)
 
-    S = '{job="jarvis-api"}'
-    d.row("Speech vendors (Jarvis API)")
-    d.add(timeseries("Credits this month, against the free tier", [
-        prom(f"jarvis_speech_month_credits{S}", legend="{{account}} used", ref="A"),
-        prom(f"jarvis_speech_month_credits_projected{S}", legend="{{account}} by month end", ref="B"),
-        prom(f"jarvis_speech_month_credits_limit{S}", legend="{{account}} free tier", ref="C"),
-    ], ds=PROM, legend=("lastNotNull",),
-        desc="Calendar month, UTC. The projection runs this month's pace to its end. An alert fires at 80% of a "
-             "free tier and when an account is exhausted."), 12, 8)
-    d.add(timeseries("This month at paid rates", [
-        prom(f"jarvis_speech_month_paid_usd{S}", legend="{{account}} now", ref="A"),
-        prom(f"jarvis_speech_month_paid_usd_projected{S}", legend="{{account}} by month end", ref="B"),
-    ], unit="currencyUSD", ds=PROM, legend=("lastNotNull",),
-        desc="Prices in the Jarvis API's config (SPEECH_PRICES): Cartesia Pro, Deepgram per use."), 12, 8)
-    d.add(timeseries("Requests by account and outcome", [
-        prom(f"sum by (account, kind, outcome)(increase(jarvis_speech_requests_total{S}[$__interval]))",
-             legend="{{account}} {{kind}} {{outcome}}"),
-    ], bars=True, stack=True, interval="1h", ds=PROM,
-        desc="Anything but ok made the request fall over to the next account."), 12, 8)
-    d.add(timeseries("Speech latency (p50 / p95)", [
-        prom(f"histogram_quantile(0.5, sum by (le, account, kind)(increase(jarvis_speech_latency_seconds_bucket{S}"
-             f"[$__interval])))", legend="{{account}} {{kind}} p50", ref="A"),
-        prom(f"histogram_quantile(0.95, sum by (le, account, kind)(increase(jarvis_speech_latency_seconds_bucket{S}"
-             f"[$__interval])))", legend="{{account}} {{kind}} p95", ref="B"),
-    ], unit="s", interval="1h", ds=PROM, legend=("mean", "max"),
-        desc="To the transcript (stt) or the first audio (tts)."), 12, 8)
-
-    d.row("Phone")
-    # The phone's own readings (app/devices.py, posted by Readings.kt every minute, and on plug/unplug and screen
-    # on/off). Gauges stop five minutes after the last post, so a phone gone quiet is a gap, not a flat line.
-    d.add(stat("Battery", f"max(jarvis_device_battery{S})", unit="percent", decimals=0, prom_q=True,
-               desc="The phone's charge, as it last reported."), 4, 4)
-    d.add(stat("Battery temperature", f"max(jarvis_device_battery_temp{S})", unit="celsius", decimals=1,
-               prom_q=True), 4, 4)
-    d.add(stat("Steps today", f"max(jarvis_device_steps_today{S})", decimals=0, prom_q=True,
-               desc="From the phone's step counter, since midnight. Only while the activity permission is granted."),
-          4, 4)
-    d.add(stat("Free storage", f"max(jarvis_device_storage_free_bytes{S})", unit="bytes", decimals=1,
-               prom_q=True), 4, 4)
-    d.add(stat("Memory available", f"max(jarvis_device_ram_available_bytes{S})", unit="bytes", decimals=1,
-               prom_q=True), 4, 4)
-    d.add(stat("Last reading", f"time() - max(jarvis_device_last_seen_seconds{S})", unit="s", decimals=0,
-               color="orange", prom_q=True,
-               desc="A minute is normal. A gap means the app or the phone stopped reporting."), 4, 4)
-    d.add(timeseries("Battery", [prom(f"max(jarvis_device_battery{S})", legend="{{name}}")], unit="percent",
-                     ds=PROM, legend=("last", "min", "max"), min_val=0, max_val=100), 8, 8)
-    d.add(timeseries("Charging, screen on, at home, listening", [
-        prom(f"max(jarvis_device_charging{S})", legend="charging", ref="A"),
-        prom(f"max(jarvis_device_screen_on{S})", legend="screen on", ref="B"),
-        prom(f"max(jarvis_device_at_home{S})", legend="at home", ref="C"),
-        prom(f"max(jarvis_device_wake_listening{S})", legend="listening", ref="D"),
-    ], unit="short", ds=PROM, legend=("last",),
-        desc="1 while each is true. At home: the Wi-Fi's default gateway is the home router, never the SSID."), 8, 8)
-    d.add(timeseries("Wi-Fi signal", [prom(f"max(jarvis_device_wifi_rssi{S})", legend="{{name}}")], unit="short",
-                     ds=PROM, legend=("last", "min"), desc="dBm. Nearer zero is stronger; -70 is weak."), 8, 8)
-    d.add(timeseries("Steps today", [prom(f"max(jarvis_device_steps_today{S})", legend="{{name}}")], unit="short",
-                     ds=PROM, legend=("last",)), 8, 8)
-    d.add(timeseries("Free storage and memory", [
-        prom(f"max(jarvis_device_storage_free_bytes{S})", legend="storage", ref="A"),
-        prom(f"max(jarvis_device_ram_available_bytes{S})", legend="memory", ref="B"),
-    ], unit="bytes", ds=PROM, legend=("last", "min")), 8, 8)
-    d.add(timeseries("Battery saver", [prom(f"max(jarvis_device_battery_saver{S})", legend="{{name}}")],
-                     unit="short", ds=PROM, legend=("last",),
-                     desc="1 while the phone is saving power."), 8, 8)
-
     d.add(text("Single turns and requests", "Each turn is a trace: **Explore → Tempo → Search → Service name "
                "`jarvis`**. The span `turn` carries the question, instructions and answer; under it one span per "
                "model call (tokens, cost, reasoning) and per tool call (arguments, result). The whole record is a "
-               "Loki line: `{service_name=\"jarvis\"} | json`. Speech requests: "
-               "`{service_name=\"jarvis-api\"} | event=\"speech_request\"`. On the server, "
-               "`~/homelab/jarvis/timing.py` prints the last turns and `~/homelab/jarvis/bench.py` times speech "
-               "to text, the answer and text to speech."), 24, 3)
+               "Loki line: `{service_name=\"jarvis\"} | json`. On the server, "
+               "`~/homelab/jarvis/timing.py` prints the last turns."), 24, 3)
     return d.build()
 
 

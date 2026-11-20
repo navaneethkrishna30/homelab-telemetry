@@ -81,18 +81,11 @@ services:
     depends_on:
       init: {condition: service_completed_successfully}
 
-  # Sends alerts (prometheus/rules/alerts.yml) to Jarvis, and the one that Jarvis is down to the phone through ntfy.
-  # NTFY_URL is the full topic URL with ntfy's message template in its query string, JARVIS_ALERTS_KEY the Jarvis
-  # webhook's bearer key; they are secrets, so they reach the config as files.
+  # Sends alerts (prometheus/rules/alerts.yml) to the hub's Alerts page.
   alertmanager:
     <<: *restart
     image: prom/alertmanager:v0.28.1
-    environment:
-      NTFY_URL: ${NTFY_URL:-}
-      JARVIS_ALERTS_KEY: ${JARVIS_ALERTS_KEY:-}
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - 'printf %s "$$NTFY_URL" > /tmp/ntfy-url && printf %s "$$JARVIS_ALERTS_KEY" > /tmp/jarvis-key && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager'
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
     ports: ["127.0.0.1:9093:9093"]
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro,z

@@ -34,22 +34,21 @@
   {
    "type": "stat",
    "title": "Turns",
-   "description": "Questions answered.",
+   "description": "Questions answered, every profile.",
    "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+    "type": "loki",
+    "uid": "loki"
    },
    "targets": [
     {
      "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+      "type": "loki",
+      "uid": "loki"
      },
-     "expr": "sum(increase(jarvis_turn_seconds_count{service_name=\"jarvis\"}[$__range]))",
+     "expr": "sum(count_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" [$__range]))",
      "legendFormat": "",
      "refId": "A",
-     "instant": true,
-     "range": false,
+     "queryType": "instant",
      "editorMode": "code"
     }
    ],
@@ -88,22 +87,21 @@
   {
    "type": "stat",
    "title": "Median turn",
-   "description": "Half of the answers took less than this, from the text arriving to the reply being ready.",
+   "description": "Half of the answers took less than this.",
    "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+    "type": "loki",
+    "uid": "loki"
    },
    "targets": [
     {
      "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+      "type": "loki",
+      "uid": "loki"
      },
-     "expr": "histogram_quantile(0.5, sum by (le)(increase(jarvis_turn_seconds_bucket{service_name=\"jarvis\"}[$__range])))",
+     "expr": "quantile_over_time(0.5, {service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" | unwrap hermes_turn_duration_s [$__range]) by ()",
      "legendFormat": "",
      "refId": "A",
-     "instant": true,
-     "range": false,
+     "queryType": "instant",
      "editorMode": "code"
     }
    ],
@@ -144,20 +142,19 @@
    "title": "Slow turn (p95)",
    "description": "One answer in twenty took longer than this.",
    "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+    "type": "loki",
+    "uid": "loki"
    },
    "targets": [
     {
      "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+      "type": "loki",
+      "uid": "loki"
      },
-     "expr": "histogram_quantile(0.95, sum by (le)(increase(jarvis_turn_seconds_bucket{service_name=\"jarvis\"}[$__range])))",
+     "expr": "quantile_over_time(0.95, {service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" | unwrap hermes_turn_duration_s [$__range]) by ()",
      "legendFormat": "",
      "refId": "A",
-     "instant": true,
-     "range": false,
+     "queryType": "instant",
      "editorMode": "code"
     }
    ],
@@ -196,22 +193,21 @@
   {
    "type": "stat",
    "title": "Model calls per turn",
-   "description": "Each call is about a second. One is the floor; more means tools were used.",
+   "description": "One is the floor; more means tools were used.",
    "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+    "type": "loki",
+    "uid": "loki"
    },
    "targets": [
     {
      "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+      "type": "loki",
+      "uid": "loki"
      },
-     "expr": "sum(increase(jarvis_turn_llm_calls_sum{service_name=\"jarvis\"}[$__range])) / sum(increase(jarvis_turn_llm_calls_count{service_name=\"jarvis\"}[$__range]))",
+     "expr": "sum(sum_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" | unwrap hermes_turn_api_call_count [$__range])) / sum(count_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" [$__range]))",
      "legendFormat": "",
      "refId": "A",
-     "instant": true,
-     "range": false,
+     "queryType": "instant",
      "editorMode": "code"
     }
    ],
@@ -261,7 +257,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.5, sum by (le)(increase(jarvis_llm_call_seconds_bucket{service_name=\"jarvis\"}[$__range])))",
+     "expr": "histogram_quantile(0.5, sum by (le)(increase(gen_ai_client_operation_duration_seconds_bucket{service_name=~\"hermes-agent|builder\"}[$__range])))",
      "legendFormat": "",
      "refId": "A",
      "instant": true,
@@ -303,8 +299,8 @@
   },
   {
    "type": "stat",
-   "title": "Output tokens",
-   "description": "Long answers show up here.",
+   "title": "Time to first token (p50)",
+   "description": "",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -315,7 +311,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum(increase(jarvis_tokens_total{service_name=\"jarvis\",kind=\"out\"}[$__range]))",
+     "expr": "histogram_quantile(0.5, sum by (le)(increase(hermes_api_time_to_first_chunk_seconds_bucket{service_name=~\"hermes-agent|builder\"}[$__range])))",
      "legendFormat": "",
      "refId": "A",
      "instant": true,
@@ -325,13 +321,13 @@
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "short",
+     "unit": "s",
      "noValue": "0",
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
      },
-     "decimals": 0
+     "decimals": 2
     },
     "overrides": []
    },
@@ -370,23 +366,33 @@
   },
   {
    "type": "timeseries",
-   "title": "Time by stage",
-   "description": "llm: waiting for the model. tools: commands and searches. hermes: everything else in the gateway.",
+   "title": "Turn time (p50 / p95)",
+   "description": "",
    "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+    "type": "loki",
+    "uid": "loki"
    },
    "targets": [
     {
      "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+      "type": "loki",
+      "uid": "loki"
      },
-     "expr": "sum by (stage)(increase(jarvis_turn_stage_seconds_total{service_name=\"jarvis\"}[$__interval]))",
-     "legendFormat": "{{stage}}",
+     "expr": "quantile_over_time(0.5, {service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" | unwrap hermes_turn_duration_s [$__interval]) by ()",
+     "legendFormat": "p50",
      "refId": "A",
-     "instant": false,
-     "range": true,
+     "queryType": "range",
+     "editorMode": "code"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "quantile_over_time(0.95, {service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" | unwrap hermes_turn_duration_s [$__interval]) by ()",
+     "legendFormat": "p95",
+     "refId": "B",
+     "queryType": "range",
      "editorMode": "code"
     }
    ],
@@ -394,12 +400,12 @@
     "defaults": {
      "unit": "s",
      "custom": {
-      "drawStyle": "bars",
+      "drawStyle": "line",
       "lineWidth": 1,
       "showPoints": "never",
-      "fillOpacity": 80,
+      "fillOpacity": 15,
       "stacking": {
-       "mode": "normal",
+       "mode": "none",
        "group": "A"
       },
       "barAlignment": 0,
@@ -416,7 +422,8 @@
      "displayMode": "table",
      "placement": "bottom",
      "calcs": [
-      "sum"
+      "mean",
+      "max"
      ]
     },
     "tooltip": {
@@ -424,7 +431,7 @@
      "sort": "desc"
     }
    },
-   "interval": "5m",
+   "interval": "15m",
    "id": 9,
    "gridPos": {
     "x": 0,
@@ -435,7 +442,7 @@
   },
   {
    "type": "timeseries",
-   "title": "Turn time (p50 / p95)",
+   "title": "Model call time by model (p50)",
    "description": "",
    "datasource": {
     "type": "prometheus",
@@ -447,21 +454,9 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.5, sum by (le)(increase(jarvis_turn_seconds_bucket{service_name=\"jarvis\"}[$__interval])))",
-     "legendFormat": "p50",
+     "expr": "histogram_quantile(0.5, sum by (le, gen_ai_request_model)(increase(gen_ai_client_operation_duration_seconds_bucket{service_name=~\"hermes-agent|builder\"}[$__interval])))",
+     "legendFormat": "{{gen_ai_request_model}}",
      "refId": "A",
-     "instant": false,
-     "range": true,
-     "editorMode": "code"
-    },
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "histogram_quantile(0.95, sum by (le)(increase(jarvis_turn_seconds_bucket{service_name=\"jarvis\"}[$__interval])))",
-     "legendFormat": "p95",
-     "refId": "B",
      "instant": false,
      "range": true,
      "editorMode": "code"
@@ -513,7 +508,7 @@
   },
   {
    "type": "timeseries",
-   "title": "Model call time by model (p50)",
+   "title": "Tool time by tool",
    "description": "",
    "datasource": {
     "type": "prometheus",
@@ -525,8 +520,8 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.5, sum by (le, model)(increase(jarvis_llm_call_seconds_bucket{service_name=\"jarvis\"}[$__interval])))",
-     "legendFormat": "{{model}}",
+     "expr": "sum by (tool_name)(increase(hermes_tool_duration_milliseconds_sum{service_name=~\"hermes-agent|builder\"}[$__interval])) / 1000",
+     "legendFormat": "{{tool_name}}",
      "refId": "A",
      "instant": false,
      "range": true,
@@ -537,12 +532,12 @@
     "defaults": {
      "unit": "s",
      "custom": {
-      "drawStyle": "line",
+      "drawStyle": "bars",
       "lineWidth": 1,
       "showPoints": "never",
-      "fillOpacity": 15,
+      "fillOpacity": 80,
       "stacking": {
-       "mode": "none",
+       "mode": "normal",
        "group": "A"
       },
       "barAlignment": 0,
@@ -559,8 +554,7 @@
      "displayMode": "table",
      "placement": "bottom",
      "calcs": [
-      "mean",
-      "max"
+      "sum"
      ]
     },
     "tooltip": {
@@ -573,14 +567,14 @@
    "gridPos": {
     "x": 0,
     "y": 14,
-    "w": 8,
+    "w": 12,
     "h": 8
    }
   },
   {
    "type": "timeseries",
-   "title": "Tool time by tool",
-   "description": "",
+   "title": "Tokens",
+   "description": "input: sent to the model. cacheRead: the part served from the provider's cache. output: what it wrote. reasoning: the thinking part.",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -591,8 +585,8 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (tool)(increase(jarvis_tool_call_seconds_sum{service_name=\"jarvis\"}[$__interval]))",
-     "legendFormat": "{{tool}}",
+     "expr": "sum by (token_type)(increase(hermes_token_usage_total{service_name=~\"hermes-agent|builder\"}[$__interval]))",
+     "legendFormat": "{{token_type}}",
      "refId": "A",
      "instant": false,
      "range": true,
@@ -601,7 +595,7 @@
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "s",
+     "unit": "short",
      "custom": {
       "drawStyle": "bars",
       "lineWidth": 1,
@@ -636,16 +630,29 @@
    "interval": "15m",
    "id": 12,
    "gridPos": {
-    "x": 8,
+    "x": 12,
     "y": 14,
-    "w": 8,
+    "w": 12,
     "h": 8
    }
   },
   {
-   "type": "timeseries",
-   "title": "Tokens",
-   "description": "in: sent to the model (cached is the part billed at the cache price, cache_write the part written to it). out: what it wrote, reasoning included (reasoning: the thinking part).",
+   "type": "row",
+   "id": 13,
+   "title": "What it costs and does",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 22,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Model cost",
+   "description": "Hermes's own price table; empty for models it cannot price (OpenCode Go).",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -656,11 +663,224 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (kind)(increase(jarvis_tokens_total{service_name=\"jarvis\"}[$__interval]))",
-     "legendFormat": "{{kind}}",
+     "expr": "sum(increase(hermes_cost_usage_total{service_name=~\"hermes-agent|builder\"}[$__range]))",
+     "legendFormat": "",
      "refId": "A",
-     "instant": false,
-     "range": true,
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyUSD",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "decimals": 3
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 14,
+   "gridPos": {
+    "x": 0,
+    "y": 23,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Turns by profile",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (service_name)(count_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" [$__range]))",
+     "legendFormat": "",
+     "refId": "A",
+     "queryType": "instant",
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 15,
+   "gridPos": {
+    "x": 6,
+    "y": 23,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Failed turns",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(count_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" | hermes_turn_final_status!=\"completed\" [$__range]))",
+     "legendFormat": "",
+     "refId": "A",
+     "queryType": "instant",
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "red"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 16,
+   "gridPos": {
+    "x": 12,
+    "y": 23,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Failed model requests",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(hermes_api_error_count_total{service_name=~\"hermes-agent|builder\"}[$__range]))",
+     "legendFormat": "",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "red"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "auto"
+   },
+   "id": 17,
+   "gridPos": {
+    "x": 18,
+    "y": 23,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Turns by platform",
+   "description": "Where the question came from: api_server (the hub and Home Assistant), cli, cron, ...",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (hermes_platform)(count_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.turn.end\" [$__interval]))",
+     "legendFormat": "{{hermes_platform}}",
+     "refId": "A",
+     "queryType": "range",
      "editorMode": "code"
     }
    ],
@@ -698,269 +918,39 @@
      "sort": "desc"
     }
    },
-   "interval": "15m",
-   "id": 13,
+   "interval": "1h",
+   "id": 18,
    "gridPos": {
-    "x": 16,
-    "y": 14,
-    "w": 8,
+    "x": 0,
+    "y": 27,
+    "w": 12,
     "h": 8
    }
   },
   {
-   "type": "row",
-   "id": 14,
-   "title": "What it costs and does",
-   "collapsed": false,
-   "gridPos": {
-    "x": 0,
-    "y": 22,
-    "w": 24,
-    "h": 1
-   },
-   "panels": []
-  },
-  {
-   "type": "stat",
-   "title": "Model cost",
-   "description": "Estimated by Hermes's own price table for each model call.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "sum(increase(jarvis_cost_usd_total{service_name=\"jarvis\"}[$__range]))",
-     "legendFormat": "",
-     "refId": "A",
-     "instant": true,
-     "range": false,
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "currencyUSD",
-     "noValue": "0",
-     "color": {
-      "mode": "fixed",
-      "fixedColor": "blue"
-     },
-     "decimals": 3
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "value",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "id": 15,
-   "gridPos": {
-    "x": 0,
-    "y": 23,
-    "w": 6,
-    "h": 4
-   }
-  },
-  {
-   "type": "stat",
-   "title": "Reasoning tokens",
-   "description": "",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "sum(increase(jarvis_tokens_total{service_name=\"jarvis\",kind=\"reasoning\"}[$__range]))",
-     "legendFormat": "",
-     "refId": "A",
-     "instant": true,
-     "range": false,
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "noValue": "0",
-     "color": {
-      "mode": "fixed",
-      "fixedColor": "blue"
-     },
-     "decimals": 0
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "value",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "id": 16,
-   "gridPos": {
-    "x": 6,
-    "y": 23,
-    "w": 6,
-    "h": 4
-   }
-  },
-  {
-   "type": "stat",
-   "title": "Failed turns",
-   "description": "",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "sum(increase(jarvis_turns_total{service_name=\"jarvis\",outcome!=\"ok\"}[$__range]))",
-     "legendFormat": "",
-     "refId": "A",
-     "instant": true,
-     "range": false,
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "noValue": "0",
-     "color": {
-      "mode": "fixed",
-      "fixedColor": "red"
-     },
-     "decimals": 0
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "value",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "id": 17,
-   "gridPos": {
-    "x": 12,
-    "y": 23,
-    "w": 6,
-    "h": 4
-   }
-  },
-  {
-   "type": "stat",
-   "title": "Failed model requests",
-   "description": "",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "sum(increase(jarvis_llm_errors_total{service_name=\"jarvis\"}[$__range]))",
-     "legendFormat": "",
-     "refId": "A",
-     "instant": true,
-     "range": false,
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "noValue": "0",
-     "color": {
-      "mode": "fixed",
-      "fixedColor": "red"
-     },
-     "decimals": 0
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "value",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "id": 18,
-   "gridPos": {
-    "x": 18,
-    "y": 23,
-    "w": 6,
-    "h": 4
-   }
-  },
-  {
    "type": "timeseries",
-   "title": "Model cost by mode",
-   "description": "mode: chat or voice on the hub, home-assistant, else Hermes's platform.",
+   "title": "Tool calls by outcome",
+   "description": "",
    "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
+    "type": "loki",
+    "uid": "loki"
    },
    "targets": [
     {
      "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+      "type": "loki",
+      "uid": "loki"
      },
-     "expr": "sum by (mode)(increase(jarvis_cost_usd_total{service_name=\"jarvis\"}[$__interval]))",
-     "legendFormat": "{{mode}}",
+     "expr": "sum by (gen_ai_tool_name, hermes_tool_outcome)(count_over_time({service_name=~\"hermes-agent|builder\"} | event_name=\"hermes.tool.call\" [$__interval]))",
+     "legendFormat": "{{gen_ai_tool_name}} {{hermes_tool_outcome}}",
      "refId": "A",
-     "instant": false,
-     "range": true,
+     "queryType": "range",
      "editorMode": "code"
     }
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "currencyUSD",
+     "unit": "short",
      "custom": {
       "drawStyle": "bars",
       "lineWidth": 1,
@@ -995,71 +985,6 @@
    "interval": "1h",
    "id": 19,
    "gridPos": {
-    "x": 0,
-    "y": 27,
-    "w": 12,
-    "h": 8
-   }
-  },
-  {
-   "type": "timeseries",
-   "title": "Tool calls by status",
-   "description": "",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "sum by (tool, status)(increase(jarvis_tool_calls_total{service_name=\"jarvis\"}[$__interval]))",
-     "legendFormat": "{{tool}} {{status}}",
-     "refId": "A",
-     "instant": false,
-     "range": true,
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": {
-      "drawStyle": "bars",
-      "lineWidth": 1,
-      "showPoints": "never",
-      "fillOpacity": 80,
-      "stacking": {
-       "mode": "normal",
-       "group": "A"
-      },
-      "barAlignment": 0,
-      "spanNulls": true
-     },
-     "color": {
-      "mode": "palette-classic"
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "legend": {
-     "displayMode": "table",
-     "placement": "bottom",
-     "calcs": [
-      "sum"
-     ]
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   },
-   "interval": "1h",
-   "id": 20,
-   "gridPos": {
     "x": 12,
     "y": 27,
     "w": 12,
@@ -1077,9 +1002,9 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "Each turn is a trace: **Explore \u2192 Tempo \u2192 Search \u2192 Service name `jarvis`**. The span `turn` carries the question, instructions and answer; under it one span per model call (tokens, cost, reasoning) and per tool call (arguments, result). The whole record is a Loki line: `{service_name=\"jarvis\"} | json`. On the server, `~/homelab/jarvis/timing.py` prints the last turns."
+    "content": "Each turn is a trace: **Explore \u2192 Tempo \u2192 Search \u2192 Service name `hermes-agent`** (or the profile). The span `agent` is the turn; under it `llm.*`, one `api.*` per model call (full prompt, reply, tokens) and `tool.*` per tool call (arguments, result). The same turn as events: `{service_name=\"hermes-agent\"} | event_name=~\".+\"`, filtered by `trace_id`. On the server, `python3 ~/.hermes/plugins/hermes_otel/skills/observability/scripts/otel.py traces` lists the last turns."
    },
-   "id": 21,
+   "id": 20,
    "gridPos": {
     "x": 0,
     "y": 35,

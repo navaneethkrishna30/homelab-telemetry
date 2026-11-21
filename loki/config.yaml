@@ -29,6 +29,8 @@ schema_config:
 limits_config:
   retention_period: 1080h         # 45d
   allow_structured_metadata: true
+  # Hermes events (hermes_otel) carry full prompts and replies as structured metadata; the default cap is 64 KB.
+  max_structured_metadata_size: 1MB
   volume_enabled: true
   otlp_config:
     resource_attributes:

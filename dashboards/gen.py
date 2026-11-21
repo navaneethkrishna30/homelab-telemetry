@@ -673,75 +673,80 @@ def immich():
 
 
 def jarvis():
-    # Jarvis (Hermes Agent on the server). Metrics and traces come from its jarvis-telemetry plugin over OTLP;
-    # one "turn" is one question and its answer. Speech-to-text and text-to-speech are outside these numbers.
+    # Jarvis (Hermes Agent on the server). Everything comes from the hermes_otel plugin over OTLP: metrics in
+    # Prometheus, one event per turn, model call and tool call in Loki, a trace per turn in Tempo. Each Hermes profile
+    # is its own service: hermes-agent (Jarvis, the default profile), builder, ...
     d = Dash("jarvis", "Jarvis", [], "now-24h", ["jarvis"])
-    J = '{service_name="jarvis"}'
+    P = '{service_name=~"hermes-agent|builder"}'
+    ENDS = '{service_name=~"hermes-agent|builder"} | event_name="hermes.turn.end"'
 
     def q(quantile, metric, by=""):
         group = f"le, {by}" if by else "le"
-        return f"histogram_quantile({quantile}, sum by ({group})(increase({metric}_bucket{J}[$__range])))"
+        return f"histogram_quantile({quantile}, sum by ({group})(increase({metric}_bucket{P}[$__range])))"
+
+    def turn_q(quantile):
+        return f"quantile_over_time({quantile}, {ENDS} | unwrap hermes_turn_duration_s [$__range]) by ()"
 
     d.row("How fast (whole time range)")
-    d.add(stat("Turns", f"sum(increase(jarvis_turn_seconds_count{J}[$__range]))", prom_q=True, decimals=0,
-               desc="Questions answered."), 4, 4)
-    d.add(stat("Median turn", q(0.5, "jarvis_turn_seconds"), unit="s", decimals=1, prom_q=True,
-               desc="Half of the answers took less than this, from the text arriving to the reply being ready."), 4, 4)
-    d.add(stat("Slow turn (p95)", q(0.95, "jarvis_turn_seconds"), unit="s", decimals=1, color="orange", prom_q=True,
+    d.add(stat("Turns", f"sum(count_over_time({ENDS} [$__range]))", decimals=0,
+               desc="Questions answered, every profile."), 4, 4)
+    d.add(stat("Median turn", turn_q(0.5), unit="s", decimals=1,
+               desc="Half of the answers took less than this."), 4, 4)
+    d.add(stat("Slow turn (p95)", turn_q(0.95), unit="s", decimals=1, color="orange",
                desc="One answer in twenty took longer than this."), 4, 4)
-    d.add(stat("Model calls per turn", f"sum(increase(jarvis_turn_llm_calls_sum{J}[$__range]))"
-               f" / sum(increase(jarvis_turn_llm_calls_count{J}[$__range]))", decimals=1, prom_q=True,
-               desc="Each call is about a second. One is the floor; more means tools were used."), 4, 4)
-    d.add(stat("Median model call", q(0.5, "jarvis_llm_call_seconds"), unit="s", decimals=2, prom_q=True), 4, 4)
-    d.add(stat("Output tokens", f'sum(increase(jarvis_tokens_total{{service_name="jarvis",kind="out"}}[$__range]))',
-               decimals=0, prom_q=True, desc="Long answers show up here."), 4, 4)
+    d.add(stat("Model calls per turn", f"sum(sum_over_time({ENDS} | unwrap hermes_turn_api_call_count [$__range]))"
+               f" / sum(count_over_time({ENDS} [$__range]))", decimals=1,
+               desc="One is the floor; more means tools were used."), 4, 4)
+    d.add(stat("Median model call", q(0.5, "gen_ai_client_operation_duration_seconds"), unit="s", decimals=2,
+               prom_q=True), 4, 4)
+    d.add(stat("Time to first token (p50)", q(0.5, "hermes_api_time_to_first_chunk_seconds"), unit="s", decimals=2,
+               prom_q=True), 4, 4)
 
     d.row("Where the time goes")
-    d.add(timeseries("Time by stage", [
-        prom(f"sum by (stage)(increase(jarvis_turn_stage_seconds_total{J}[$__interval]))", legend="{{stage}}"),
-    ], unit="s", bars=True, stack=True, interval="5m", ds=PROM,
-        desc="llm: waiting for the model. tools: commands and searches. hermes: everything else in the gateway."), 12, 8)
     d.add(timeseries("Turn time (p50 / p95)", [
-        prom(f"histogram_quantile(0.5, sum by (le)(increase(jarvis_turn_seconds_bucket{J}[$__interval])))",
+        loki(f"quantile_over_time(0.5, {ENDS} | unwrap hermes_turn_duration_s [$__interval]) by ()",
              legend="p50", ref="A"),
-        prom(f"histogram_quantile(0.95, sum by (le)(increase(jarvis_turn_seconds_bucket{J}[$__interval])))",
+        loki(f"quantile_over_time(0.95, {ENDS} | unwrap hermes_turn_duration_s [$__interval]) by ()",
              legend="p95", ref="B"),
-    ], unit="s", interval="15m", ds=PROM, legend=("mean", "max")), 12, 8)
+    ], unit="s", interval="15m", legend=("mean", "max")), 12, 8)
     d.add(timeseries("Model call time by model (p50)", [
-        prom(f"histogram_quantile(0.5, sum by (le, model)(increase(jarvis_llm_call_seconds_bucket{J}[$__interval])))",
-             legend="{{model}}"),
-    ], unit="s", interval="15m", ds=PROM, legend=("mean", "max")), 8, 8)
+        prom(f"histogram_quantile(0.5, sum by (le, gen_ai_request_model)"
+             f"(increase(gen_ai_client_operation_duration_seconds_bucket{P}[$__interval])))",
+             legend="{{gen_ai_request_model}}"),
+    ], unit="s", interval="15m", ds=PROM, legend=("mean", "max")), 12, 8)
     d.add(timeseries("Tool time by tool", [
-        prom(f"sum by (tool)(increase(jarvis_tool_call_seconds_sum{J}[$__interval]))", legend="{{tool}}"),
-    ], unit="s", bars=True, stack=True, interval="15m", ds=PROM), 8, 8)
+        prom(f"sum by (tool_name)(increase(hermes_tool_duration_milliseconds_sum{P}[$__interval])) / 1000",
+             legend="{{tool_name}}"),
+    ], unit="s", bars=True, stack=True, interval="15m", ds=PROM), 12, 8)
     d.add(timeseries("Tokens", [
-        prom(f"sum by (kind)(increase(jarvis_tokens_total{J}[$__interval]))", legend="{{kind}}"),
+        prom(f"sum by (token_type)(increase(hermes_token_usage_total{P}[$__interval]))", legend="{{token_type}}"),
     ], bars=True, stack=True, interval="15m", ds=PROM,
-        desc="in: sent to the model (cached is the part billed at the cache price, cache_write the part written "
-             "to it). out: what it wrote, reasoning included (reasoning: the thinking part)."), 8, 8)
+        desc="input: sent to the model. cacheRead: the part served from the provider's cache. output: what it "
+             "wrote. reasoning: the thinking part."), 12, 8)
 
     d.row("What it costs and does")
-    d.add(stat("Model cost", f"sum(increase(jarvis_cost_usd_total{J}[$__range]))", unit="currencyUSD", decimals=3,
-               prom_q=True, desc="Estimated by Hermes's own price table for each model call."), 6, 4)
-    d.add(stat("Reasoning tokens", f'sum(increase(jarvis_tokens_total{{service_name="jarvis",kind="reasoning"}}'
-               f'[$__range]))', decimals=0, prom_q=True), 6, 4)
-    d.add(stat("Failed turns", f'sum(increase(jarvis_turns_total{{service_name="jarvis",outcome!="ok"}}[$__range]))',
-               decimals=0, color="red", prom_q=True), 6, 4)
-    d.add(stat("Failed model requests", f"sum(increase(jarvis_llm_errors_total{J}[$__range]))", decimals=0,
+    d.add(stat("Model cost", f"sum(increase(hermes_cost_usage_total{P}[$__range]))", unit="currencyUSD", decimals=3,
+               prom_q=True, desc="Hermes's own price table; empty for models it cannot price (OpenCode Go)."), 6, 4)
+    d.add(stat("Turns by profile", f"sum by (service_name)(count_over_time({ENDS} [$__range]))", decimals=0), 6, 4)
+    d.add(stat("Failed turns", f'sum(count_over_time({ENDS} | hermes_turn_final_status!="completed" [$__range]))',
+               decimals=0, color="red"), 6, 4)
+    d.add(stat("Failed model requests", f"sum(increase(hermes_api_error_count_total{P}[$__range]))", decimals=0,
                color="red", prom_q=True), 6, 4)
-    d.add(timeseries("Model cost by mode", [
-        prom(f"sum by (mode)(increase(jarvis_cost_usd_total{J}[$__interval]))", legend="{{mode}}"),
-    ], unit="currencyUSD", bars=True, stack=True, interval="1h", ds=PROM,
-        desc="mode: chat or voice on the hub, home-assistant, else Hermes's platform."), 12, 8)
-    d.add(timeseries("Tool calls by status", [
-        prom(f"sum by (tool, status)(increase(jarvis_tool_calls_total{J}[$__interval]))", legend="{{tool}} {{status}}"),
-    ], bars=True, stack=True, interval="1h", ds=PROM), 12, 8)
+    d.add(timeseries("Turns by platform", [
+        loki(f"sum by (hermes_platform)(count_over_time({ENDS} [$__interval]))", legend="{{hermes_platform}}"),
+    ], bars=True, stack=True, interval="1h",
+        desc="Where the question came from: api_server (the hub and Home Assistant), cli, cron, ..."), 12, 8)
+    d.add(timeseries("Tool calls by outcome", [
+        loki(f'sum by (gen_ai_tool_name, hermes_tool_outcome)(count_over_time({{service_name=~"hermes-agent|builder"}}'
+             f' | event_name="hermes.tool.call" [$__interval]))', legend="{{gen_ai_tool_name}} {{hermes_tool_outcome}}"),
+    ], bars=True, stack=True, interval="1h"), 12, 8)
 
     d.add(text("Single turns and requests", "Each turn is a trace: **Explore → Tempo → Search → Service name "
-               "`jarvis`**. The span `turn` carries the question, instructions and answer; under it one span per "
-               "model call (tokens, cost, reasoning) and per tool call (arguments, result). The whole record is a "
-               "Loki line: `{service_name=\"jarvis\"} | json`. On the server, "
-               "`~/homelab/jarvis/timing.py` prints the last turns."), 24, 3)
+               "`hermes-agent`** (or the profile). The span `agent` is the turn; under it `llm.*`, one `api.*` per "
+               "model call (full prompt, reply, tokens) and `tool.*` per tool call (arguments, result). The same turn "
+               "as events: `{service_name=\"hermes-agent\"} | event_name=~\".+\"`, filtered by `trace_id`. On the "
+               "server, `python3 ~/.hermes/plugins/hermes_otel/skills/observability/scripts/otel.py traces` lists "
+               "the last turns."), 24, 3)
     return d.build()
 
 

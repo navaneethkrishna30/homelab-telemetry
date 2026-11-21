@@ -4,6 +4,8 @@ server:
   http_listen_port: 3200
 
 distributor:
+  # Hermes (hermes_otel, content_capture full) puts the whole prompt on each api.* span; the default cap is 2 KB.
+  max_attribute_bytes: 1048576
   receivers:
     otlp:
       protocols:
